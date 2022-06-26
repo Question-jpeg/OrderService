@@ -1,0 +1,26 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+dj-database-url = "*"
+djangorestframework = "*"
+django-cors-headers = "*"
+djoser = "*"
+djangorestframework-simplejwt = "*"
+drf-nested-routers = "*"
+gunicorn = "*"
+django-filter = "*"
+pillow = "*"
+django-debug-toolbar = "*"
+whitenoise = "*"
+django-storages = "*"
+boto3 = "*"
+django-fs-smsaero = "*"
+
+[dev-packages]
+autopep8 = "*"
+
+[requires]
+python_version = "3.9"
