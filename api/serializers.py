@@ -5,7 +5,8 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-from api.models import Cart, CartItem, Order, OrderCode, OrderItem, Product, ProductFile
+from api.models import Cart, CartItem, Order, OrderItem, Product, ProductFile
+
 
 class ProductFileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -91,15 +92,20 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 def condition_constructor(start_time, end_time):
-            start_endpoint_condition = Q(start_datetime__gte=start_time) & Q(start_datetime__lte=end_time)
-            end_endpoint_condition = Q(end_datetime__gte=start_time) & Q(end_datetime__lte=end_time)
-            middle_condition_over = Q(start_datetime__lte=start_time) & Q(end_datetime__gte=end_time)
-            middle_condition_under = Q(start_datetime__gte=start_time) & Q(end_datetime__lte=end_time)
+    start_endpoint_condition = Q(start_datetime__gte=start_time) & Q(
+        start_datetime__lte=end_time)
+    end_endpoint_condition = Q(end_datetime__gte=start_time) & Q(
+        end_datetime__lte=end_time)
+    middle_condition_over = Q(start_datetime__lte=start_time) & Q(
+        end_datetime__gte=end_time)
+    middle_condition_under = Q(start_datetime__gte=start_time) & Q(
+        end_datetime__lte=end_time)
 
-            return (start_endpoint_condition |
-                    end_endpoint_condition   |
-                    middle_condition_over    |
-                    middle_condition_under)
+    return (start_endpoint_condition |
+            end_endpoint_condition |
+            middle_condition_over |
+            middle_condition_under)
+
 
 class CreateOrderSerializer(serializers.ModelSerializer):
     class Meta:
@@ -107,7 +113,7 @@ class CreateOrderSerializer(serializers.ModelSerializer):
         fields = ['cart_id', 'phone', 'name']
 
     cart_id = serializers.UUIDField()
-    
+
     def validate_cart_id(self, cart_id):
         if not Cart.objects.filter(pk=cart_id).exists():
             raise serializers.ValidationError(
@@ -151,46 +157,49 @@ class CreateOrderSerializer(serializers.ModelSerializer):
 
                 total += total_price
 
-            self.instance = Order.objects.create(name=name, phone=phone, total_price=total)
+            digits = '0123456789'
+            code = ''.join(random.choices(digits, k=4))
+            while Order.objects.filter(~Q(status='C') & ~Q(status='F') & Q(code=code)).exists():
+                code = ''.join(random.choices(digits, k=4))
+
+            self.instance = Order.objects.create(
+                name=name, phone=phone, total_price=total, code=code)
 
             list_for_creating = [
                 OrderItem(order=self.instance, **data) for data in list_for_filling]
             OrderItem.objects.bulk_create(list_for_creating)
 
-            digits = '0123456789'
-            code = ''.join(random.choices(digits, k=4))
-            while OrderCode.objects.filter(code=code).exists():
-                code = ''.join(random.choices(digits, k=4))
-
-            OrderCode.objects.create(order=self.instance, code=code)
-
             cart.delete()
 
             return self.instance
 
+
 class VerifyOrderWithCodeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = OrderCode
+        model = Order
         fields = ['code']
-
-    code = serializers.CharField()
 
     def save(self, **kwargs):
         order_id = self.context['order_id']
         code = self.validated_data['code']
 
-        order_code = get_object_or_404(OrderCode.objects.all(), order_id=order_id)
-        
-        if order_code.code == code:
-            order = get_object_or_404(Order.objects.all(), pk=order_id)
-            order.status = 'P'
-            order.save()
+        try:
+            order = Order.objects.get(status='W', pk=order_id)
+            if order.code == code:
+                order.status = 'P'
+                order.save()
+            else:
+                raise serializers.ValidationError(
+                    {'error': 'Неверный код верификации'})
+        except Order.DoesNotExist:
+            raise serializers.ValidationError(
+                {'error': 'Заказ в верификации не нуждается'})
 
-            order_code.delete()
-        else:
-            raise serializers.ValidationError({'error': 'Неверный код верификации'})
+class GetOrderSerializer(serializers.Serializer):
+    code = serializers.CharField()
 
-
+    def save(self, **kwargs):
+        return get_object_or_404(Order.objects.all(), **self.validated_data, pk=self.context['order_id'])
 
 class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -198,6 +207,7 @@ class CartItemSerializer(serializers.ModelSerializer):
         exclude = ['cart']
 
     product = ProductSerializer()
+
 
 class CreateCartItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -238,6 +248,7 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
         self.instance = CartItem.objects.create(
             **self.validated_data, cart_id=cart_id, total_price=total_price)
         return self.instance
+
 
 class CartSerializer(serializers.ModelSerializer):
     class Meta:

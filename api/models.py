@@ -68,6 +68,7 @@ class Order(models.Model):
     name = models.CharField(max_length=255)
     status = models.CharField(max_length=1, choices=PAYMENT_STATUS_CHOICES, default=PAYMENT_STATUS_WAITING)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    code = models.CharField(max_length=4)
 
 class OrderItem(models.Model):
     order = models.ForeignKey(to=Order, on_delete=models.PROTECT, related_name='items')
@@ -75,10 +76,6 @@ class OrderItem(models.Model):
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
-
-class OrderCode(models.Model):
-    order = models.ForeignKey(to=Order, on_delete=models.PROTECT, related_name='code')
-    code = models.CharField(max_length=4, unique=True)
 
 class Cart(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4)

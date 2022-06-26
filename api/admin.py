@@ -15,10 +15,6 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
     list_display = ['id', 'phone', 'name', 'status', 'total_price']
 
-@admin.register(models.OrderCode)
-class OrderCodeAdmin(admin.ModelAdmin):
-    list_display = ['order', 'code']
-
 class ProductFileInline(admin.TabularInline):
     model = models.ProductFile
     extra = 3

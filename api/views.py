@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAdminUser, AllowAny, SAFE_METHODS
 from rest_framework.decorators import action
 
 from api.models import Cart, CartItem, Order, OrderItem, Product
-from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderSerializer, CreateProductSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, UpdateProductSerializer
+from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderSerializer, CreateProductSerializer, GetOrderSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, UpdateProductSerializer
 
 from django.conf import settings
 from .smsaero import SmsAero
@@ -23,25 +23,34 @@ class OrderViewSet(ModelViewSet):
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
     def get_permissions(self):
-        if self.request.method == 'POST' or self.action == 'verify_code':
+        if self.request.method == 'POST':
             return [AllowAny()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
-        if self.action == 'verify_code':
+        if self.action == 'get_order':
+            return GetOrderSerializer
+        if self.action == 'verify_order':
             return VerifyOrderWithCodeSerializer
         if self.request.method == 'POST':
             return CreateOrderSerializer
         return OrderSerializer
 
     @action(detail=True, methods=['post'])
-    def verify_code(self, request, pk):
-        print(self.detail)
+    def verify_order(self, request, pk):
         serializer = VerifyOrderWithCodeSerializer(data=request.data, context={'order_id': pk})
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
         return Response({'Заказ принят'}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def get_order(self, request, pk):
+        serializer = GetOrderSerializer(data=request.data, context={'order_id': pk})
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save()
+
+        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
 
         
 class OrderItemViewSet(ModelViewSet):
