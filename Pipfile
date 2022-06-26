@@ -18,6 +18,7 @@ whitenoise = "*"
 django-storages = "*"
 boto3 = "*"
 django-fs-smsaero = "*"
+psycopg2 = "*"
 
 [dev-packages]
 autopep8 = "*"
