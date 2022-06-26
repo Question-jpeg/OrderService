@@ -143,14 +143,14 @@ class CreateOrderSerializer(serializers.ModelSerializer):
 
                 if not product.is_available:
                     raise serializers.ValidationError(
-                        {'error': {'product_id': product.pk, 'message': 'Продукт недоступен'}})
+                        {'product_id': product.pk, 'message': 'Продукт недоступен'})
 
                 start_extended = start - timedelta(minutes=29)
                 end_extended = end + timedelta(minutes=29)
 
                 if OrderItem.objects.filter(product=product).filter(condition_constructor(start_extended, end_extended)).exists():
                     raise serializers.ValidationError(
-                        {'error': {'product_id': product.pk, 'message': 'Похоже, что кто то уже забронировал этот объект на введённое вами время'}})
+                        {'product_id': product.pk, 'message': 'Похоже, что кто то уже забронировал этот объект на введённое вами время'})
 
                 list_for_filling.append(
                     {'product': product, 'start_datetime': start, 'end_datetime': end, 'total_price': total_price})
@@ -189,17 +189,17 @@ class VerifyOrderWithCodeSerializer(serializers.ModelSerializer):
                 order.status = 'P'
                 order.save()
             else:
-                raise serializers.ValidationError(
-                    {'error': 'Неверный код верификации'})
+                raise serializers.ValidationError('Неверный код верификации')
         except Order.DoesNotExist:
-            raise serializers.ValidationError(
-                {'error': 'Заказ в верификации не нуждается'})
+            raise serializers.ValidationError('Заказ в верификации не нуждается')
+
 
 class GetOrderSerializer(serializers.Serializer):
     code = serializers.CharField()
 
     def save(self, **kwargs):
         return get_object_or_404(Order.objects.all(), **self.validated_data, pk=self.context['order_id'])
+
 
 class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -223,25 +223,24 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
         time_difference = end - start
 
         if (time_difference.seconds % 3600 != 0) or (start >= end):
-            raise serializers.ValidationError(
-                {'error': 'Некорректный ввод даты'})
+            raise serializers.ValidationError('Некорректный ввод даты')
 
         if not product.is_available:
-            raise serializers.ValidationError({'error': 'Продукт недоступен'})
+            raise serializers.ValidationError('Продукт недоступен')
 
         start_extended = start - timedelta(minutes=29)
         end_extended = end + timedelta(minutes=29)
 
         if OrderItem.objects.filter(product=product).filter(condition_constructor(start_extended, end_extended)).exists():
             raise serializers.ValidationError(
-                {'error': {'product_id': product.pk, 'message': 'Похоже, что кто то уже забронировал этот объект на введённое вами время'}})
+                {'product_id': product.pk, 'message': 'Похоже, что кто то уже забронировал этот объект на введённое вами время'})
 
         start_shorten = start + timedelta(minutes=1)
         end_shorten = end - timedelta(minutes=1)
 
         if CartItem.objects.filter(cart_id=cart_id, product=product).filter(condition_constructor(start_shorten, end_shorten)).exists():
             raise serializers.ValidationError(
-                {'error': {'product_id': product.pk, 'message': 'Время брони этого объекта пересекается с таким же объектом, который у вас уже в корзине'}})
+                {'product_id': product.pk, 'message': 'Время брони этого объекта пересекается с таким же объектом, который у вас уже в корзине'})
 
         hours = decimal.Decimal(time_difference.seconds / 3600)
         total_price = product.price_per_hour * hours
