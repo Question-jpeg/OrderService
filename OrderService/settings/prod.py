@@ -23,3 +23,4 @@ AWS_QUERYSTRING_AUTH = True # Changed from "False"
 SMSAERO_LOGIN = os.environ['SMSAERO_LOGIN']
 SMSAERO_API_KEY = os.environ['SMSAERO_API_KEY']
 
+ 
