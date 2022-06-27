@@ -159,8 +159,6 @@ class CreateOrderSerializer(serializers.ModelSerializer):
 
             digits = '0123456789'
             code = ''.join(random.choices(digits, k=4))
-            while Order.objects.filter(~Q(status='C') & ~Q(status='F') & Q(code=code)).exists():
-                code = ''.join(random.choices(digits, k=4))
 
             self.instance = Order.objects.create(
                 name=name, phone=phone, total_price=total, code=code)
