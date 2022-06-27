@@ -46,6 +46,7 @@ class Product(models.Model):
     title = models.CharField(max_length=255)
     price_per_hour = models.DecimalField(max_digits=10, decimal_places=2)
     is_available = models.BooleanField(default=True)
+    description = models.TextField(null=True, blank=True)
 
 class ProductFile(models.Model):
     product = models.ForeignKey(to=Product, on_delete=models.CASCADE, related_name='files')
