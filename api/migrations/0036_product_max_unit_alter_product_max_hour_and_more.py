@@ -15,15 +15,5 @@ class Migration(migrations.Migration):
             name='max_unit',
             field=models.PositiveSmallIntegerField(default=8),
             preserve_default=False,
-        ),
-        migrations.AlterField(
-            model_name='product',
-            name='max_hour',
-            field=models.SmallIntegerField(blank=True, null=True),
-        ),
-        migrations.AlterField(
-            model_name='product',
-            name='min_hour',
-            field=models.SmallIntegerField(blank=True, null=True),
-        ),
+        )
     ]
