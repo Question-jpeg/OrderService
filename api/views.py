@@ -1,33 +1,35 @@
 import json
+from django.shortcuts import get_object_or_404
 from rest_framework.viewsets import ModelViewSet
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, AllowAny, SAFE_METHODS
 from rest_framework.decorators import action
 
-from api.models import Cart, CartItem, Order, OrderItem, Product
-from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderSerializer, CreateProductSerializer, GetOrderSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, UpdateProductSerializer
-
-from django.conf import settings
-from .smsaero import SmsAero
-import urllib3
+from api.models import Cart, CartItem, ProductSpecialInterval, Order, OrderItem, Product
+from api.permissions import IsAdminUserOrPostOnly
+from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderSerializer, CreateProductSerializer, GetNewOrderCodeSerializer, MarkOrderAsFailedSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, UpdateProductSerializer
 
 class OrderViewSet(ModelViewSet):
     queryset = Order.objects.prefetch_related('items__product__files')
 
     def create(self, request, *args, **kwargs):
-        serializer = CreateOrderSerializer(data=request.data)
+        serializer = CreateOrderSerializer(data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
 
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
     def get_permissions(self):
-        if self.request.method == 'POST':
-            return [AllowAny()]
-        return [IsAdminUser()]
+        if (self.action == 'mark_order_as_failed') or (self.request.method != 'POST'):
+            return [IsAdminUser()]
+        return [AllowAny()]
 
     def get_serializer_class(self):
+        if self.action == 'get_new_code':
+            return GetNewOrderCodeSerializer
+        if self.action == 'mark_order_as_failed':
+            return MarkOrderAsFailedSerializer
         if self.action == 'get_order':
             return GetOrderSerializer
         if self.action == 'verify_order':
@@ -36,13 +38,29 @@ class OrderViewSet(ModelViewSet):
             return CreateOrderSerializer
         return OrderSerializer
 
+    def get_serializer_context(self):
+        x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ipaddress = x_forwarded_for.split(',')[-1].strip()
+        else:   
+            ipaddress = self.request.META.get('REMOTE_ADDR')
+        return {'request': self.request, 'ip': ipaddress}
+
     @action(detail=True, methods=['post'])
     def verify_order(self, request, pk):
         serializer = VerifyOrderWithCodeSerializer(data=request.data, context={'order_id': pk})
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        return Response({'Заказ принят'}, status=status.HTTP_200_OK)
+        return Response('Заказ принят', status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'])
+    def get_new_code(self, request, pk):
+        serializer = GetNewOrderCodeSerializer(data=request.data, context={'order_id': pk})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response('Новый код отправлен', status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def get_order(self, request, pk):
@@ -51,6 +69,15 @@ class OrderViewSet(ModelViewSet):
         order = serializer.save()
 
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def mark_order_as_failed(self, request, pk):
+        serializer = MarkOrderAsFailedSerializer(data=request.data, context={'order_id': pk})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response('Заказ отмечен как недействительный', status=status.HTTP_200_OK)
+
 
         
 class OrderItemViewSet(ModelViewSet):
@@ -80,8 +107,15 @@ class ProductViewSet(ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def timeView(self, request, pk):
-        queryset = OrderItem.objects.filter(product=pk)
+        queryset = OrderItem.objects.filter(product_id=pk)
         serializer = OrderItemTimeSerializer(queryset, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['get'])
+    def productSpecialIntervalView(self, request, pk):
+        queryset = ProductSpecialInterval.objects.filter(product_id=pk)
+        serializer = ProductSpecialIntervalSerializer(queryset, many=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -92,9 +126,9 @@ class CartViewSet(ModelViewSet):
     serializer_class = CartSerializer
 
     def get_permissions(self):
-        if self.request.method == 'POST':
+        if self.detail:
             return [AllowAny()]
-        return [IsAdminUser()]
+        return [IsAdminUserOrPostOnly()]
 
 class CartItemViewSet(ModelViewSet):
     def get_queryset(self):
@@ -103,6 +137,8 @@ class CartItemViewSet(ModelViewSet):
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return CreateCartItemSerializer
+        if self.request.method == 'PUT':
+            return UpdateCartItemSerializer
         return CartItemSerializer
 
     def get_serializer_context(self):

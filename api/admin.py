@@ -13,7 +13,7 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
-    list_display = ['id', 'phone', 'name', 'status', 'total_price']
+    list_display = ['id', 'phone', 'name', 'status', 'total_price', 'created_at']
 
 class ProductFileInline(admin.TabularInline):
     model = models.ProductFile
@@ -22,7 +22,7 @@ class ProductFileInline(admin.TabularInline):
 @admin.register(models.Product)
 class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductFileInline]
-    list_display = ['title', 'price_per_hour', 'is_available']
+    list_display = ['title', 'is_available']
 
 class CartItemInline(admin.TabularInline):
     model = models.CartItem
@@ -35,4 +35,8 @@ class CartAdmin(admin.ModelAdmin):
 
 @admin.register(models.CartItem)
 class CartItemAdmin(admin.ModelAdmin):
-    list_display = ['cart', 'product', 'start_datetime', 'end_datetime', 'total_price']
+    list_display = ['cart', 'product', 'start_datetime', 'end_datetime']
+
+@admin.register(models.ProductSpecialInterval)
+class ProductSpecialIntervalAdmin(admin.ModelAdmin):
+    list_display = ['common_type', 'start_datetime', 'end_datetime', 'product', 'additional_price_per_unit']

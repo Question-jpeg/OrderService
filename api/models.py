@@ -43,10 +43,29 @@ def delete_file_if_unused(model,instance,field,instance_file_field):
 
 
 class Product(models.Model):
+
+    TIME_UNIT_HOUR = 'H'
+    TIME_UNIT_DAY = 'D'
+    TIME_UNIT_CHOICES = [
+        (TIME_UNIT_HOUR, 'Hour'),
+        (TIME_UNIT_DAY, 'Day')
+    ]
+
     title = models.CharField(max_length=255)
-    price_per_hour = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.IntegerField()
+    min_unit = models.PositiveSmallIntegerField()
+    max_unit = models.PositiveSmallIntegerField()
+    time_unit = models.CharField(max_length=1, choices=TIME_UNIT_CHOICES)
+    min_hour = models.TimeField(null=True, blank=True)
+    max_hour = models.TimeField(null=True, blank=True)
+    required_product = models.ForeignKey(to='self', on_delete=models.SET_NULL, null=True, blank=True)
     is_available = models.BooleanField(default=True)
+    use_hotel_booking_time = models.BooleanField()
     description = models.TextField(null=True, blank=True)
+    max_persons = models.SmallIntegerField()
+
+    def __str__(self) -> str:
+        return self.title
 
 class ProductFile(models.Model):
     product = models.ForeignKey(to=Product, on_delete=models.CASCADE, related_name='files')
@@ -68,22 +87,39 @@ class Order(models.Model):
     phone = models.CharField(max_length=15)
     name = models.CharField(max_length=255)
     status = models.CharField(max_length=1, choices=PAYMENT_STATUS_CHOICES, default=PAYMENT_STATUS_WAITING)
-    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_price = models.IntegerField()
     code = models.CharField(max_length=4)
+    attempts_left = models.SmallIntegerField()
+    resends_left = models.SmallIntegerField()
+    persons = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField()
 
 class OrderItem(models.Model):
     order = models.ForeignKey(to=Order, on_delete=models.PROTECT, related_name='items')
     product = models.ForeignKey(to=Product, on_delete=models.PROTECT, related_name='order_items')
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
-    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total_price = models.IntegerField()
 
 class Cart(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4)
+    persons = models.PositiveSmallIntegerField()
+
+class ProductSpecialInterval(models.Model):
+    COMMON_TYPE_WEEKENDS = 'E'
+    COMMON_TYPE_CHOICES = [
+        (COMMON_TYPE_WEEKENDS, 'Выходные')
+    ]
+    start_datetime = models.DateTimeField(null=True, blank=True)
+    end_datetime = models.DateTimeField(null=True, blank=True)
+    common_type = models.CharField(null=True, blank=True, choices=COMMON_TYPE_CHOICES, max_length=1)
+    product = models.ForeignKey(to=Product, on_delete=models.CASCADE, related_name='product_special_intervals')
+    additional_price_per_unit = models.IntegerField()
 
 class CartItem(models.Model):
     cart = models.ForeignKey(to=Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(to=Product, on_delete=models.PROTECT, related_name='+')
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
-    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.IntegerField()
