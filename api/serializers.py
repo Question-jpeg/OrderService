@@ -344,6 +344,7 @@ class GetNewOrderCodeSerializer(serializers.Serializer):
                 send = smsApi.send(
                     order.phone, f'Подтвердите бронирование. Код верификации: {code}')
 
+            order.code = code
             order.resends_left = order.resends_left - 1
             order.save()
         except Order.DoesNotExist:
