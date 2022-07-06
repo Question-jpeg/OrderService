@@ -15,7 +15,7 @@ django-filter = "*"
 pillow = "*"
 django-debug-toolbar = "*"
 whitenoise = "*"
-django-storages = "*"
+django-storages = {extras = ["dropbox"], version = "*"}
 boto3 = "*"
 django-fs-smsaero = "*"
 psycopg2 = "*"
