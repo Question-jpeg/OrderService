@@ -69,7 +69,7 @@ class Product(models.Model):
 
 class ProductFile(models.Model):
     product = models.ForeignKey(to=Product, on_delete=models.CASCADE, related_name='files')
-    file = models.FileField(upload_to='api/products/files')
+    file = models.FileField(upload_to='files')
 
 class Order(models.Model):
 
