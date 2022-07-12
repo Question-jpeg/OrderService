@@ -1,3 +1,7 @@
 *.pyc
 /media/
+/OrderService/settings/prod.py
+/OrderService/asgi.py
+/OrderService/wsgi.py
+manage.py
 db.sqlite3
