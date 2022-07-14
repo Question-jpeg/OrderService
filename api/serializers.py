@@ -24,7 +24,7 @@ class RequiredProductSerializer(serializers.ModelSerializer):
 class ProductSpecialIntervalSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSpecialInterval
-        fields = ['start_datetime', 'end_datetime', 'common_type']
+        fields = '__all__'
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
