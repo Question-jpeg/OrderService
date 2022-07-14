@@ -260,7 +260,8 @@ class CreateOrderSerializer(serializers.ModelSerializer):
 
             total += total_price
             cart_items_total += price
-            total_max_persons += max_persons
+            if use_hotel_booking_time:
+                total_max_persons += max_persons
             cart_item_ids.append(product.pk)
 
             if price != total_price:
