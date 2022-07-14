@@ -88,7 +88,7 @@ class OrderItemViewSet(ModelViewSet):
         return OrderItem.objects.filter(order=self.kwargs['order_pk']).prefetch_related('product__files')
 
 class ProductViewSet(ModelViewSet):
-    queryset = Product.objects.prefetch_related('files').select_related('required_product')
+    queryset = Product.objects.prefetch_related('files', 'product_special_intervals').select_related('required_product')
 
     def get_serializer_class(self):
         method = self.request.method

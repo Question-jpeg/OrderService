@@ -15,13 +15,17 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
     list_display = ['id', 'phone', 'name', 'status', 'total_price', 'created_at']
 
+class ProductSpecialIntervalInline(admin.TabularInline):
+    model = models.ProductSpecialInterval
+    extra = 1
+
 class ProductFileInline(admin.TabularInline):
     model = models.ProductFile
     extra = 3
 
 @admin.register(models.Product)
 class ProductAdmin(admin.ModelAdmin):
-    inlines = [ProductFileInline]
+    inlines = [ProductFileInline, ProductSpecialIntervalInline]
     list_display = ['title', 'is_available']
 
 class CartItemInline(admin.TabularInline):
@@ -39,4 +43,4 @@ class CartItemAdmin(admin.ModelAdmin):
 
 @admin.register(models.ProductSpecialInterval)
 class ProductSpecialIntervalAdmin(admin.ModelAdmin):
-    list_display = ['common_type', 'start_datetime', 'end_datetime', 'product', 'additional_price_per_unit']
+    list_display = ['product', 'common_type', 'start_datetime', 'end_datetime', 'additional_price_per_unit']

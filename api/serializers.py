@@ -21,6 +21,11 @@ class RequiredProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = '__all__'
 
+class ProductSpecialIntervalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductSpecialInterval
+        fields = ['start_datetime', 'end_datetime', 'common_type']
+
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
@@ -28,6 +33,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     files = ProductFileSerializer(many=True)
     required_product = RequiredProductSerializer()
+    product_special_intervals = ProductSpecialIntervalSerializer(many=True)
 
 
 class CreateProductSerializer(serializers.ModelSerializer):
@@ -520,9 +526,3 @@ class CartSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
     items = CartItemSerializer(many=True, read_only=True)
-
-
-class ProductSpecialIntervalSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductSpecialInterval
-        fields = ['start_datetime', 'end_datetime', 'common_type']
