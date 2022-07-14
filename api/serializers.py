@@ -16,6 +16,10 @@ class ProductFileSerializer(serializers.ModelSerializer):
         model = ProductFile
         fields = ['id', 'file']
 
+class RequiredProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = '__all__'
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,6 +27,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     files = ProductFileSerializer(many=True)
+    required_product = RequiredProductSerializer()
 
 
 class CreateProductSerializer(serializers.ModelSerializer):
