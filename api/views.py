@@ -159,3 +159,7 @@ class UserPushNotificationTokenViewSet(ModelViewSet):
     permission_classes = [IsAdminUser, IsOwner]
     serializer_class = UserPushNotificationTokenSerializer
     queryset = UserPushNotificationToken.objects.all()
+
+    @action(methods=['get'], detail=False, permission_classes=[IsAdminUser])
+    def is_token(self, request):
+        return Response(UserPushNotificationToken.objects.filter(user=request.user).exists(), status=status.HTTP_200_OK)
