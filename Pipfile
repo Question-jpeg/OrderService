@@ -19,6 +19,7 @@ django-storages = {extras = ["dropbox"], version = "*"}
 boto3 = "*"
 django-fs-smsaero = "*"
 psycopg2 = "*"
+exponent-server-sdk = "*"
 
 [dev-packages]
 autopep8 = "*"

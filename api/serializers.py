@@ -5,9 +5,11 @@ from django.db import transaction
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-from api.models import Cart, CartItem, ProductSpecialInterval, Order, OrderItem, Product, ProductFile
+from api.models import Cart, CartItem, ProductSpecialInterval, Order, OrderItem, Product, ProductFile, UserPushNotificationToken
 
 from django.conf import settings
+
+from .utils.pushNotifications import send_push_message
 from .smsaero import SmsAero
 
 
@@ -16,15 +18,18 @@ class ProductFileSerializer(serializers.ModelSerializer):
         model = ProductFile
         fields = ['id', 'file']
 
+
 class RequiredProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = '__all__'
 
+
 class ProductSpecialIntervalSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSpecialInterval
         fields = '__all__'
+
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -112,6 +117,7 @@ def condition_constructor(start_time, end_time):
 
     return universal_query
 
+
 def count_of_weekends(start_time, end_time):
 
     weekends = 0
@@ -122,6 +128,7 @@ def count_of_weekends(start_time, end_time):
 
     return weekends
 
+
 def overlapping(r1_start_time, r1_end_time, r2_start_time, r2_end_time, days=True):
     delta = 0
 
@@ -131,7 +138,6 @@ def overlapping(r1_start_time, r1_end_time, r2_start_time, r2_end_time, days=Tru
     difference = delta.days if days else delta.seconds // 3600
 
     return difference
-
 
 
 class CreateOrderSerializer(serializers.ModelSerializer):
@@ -213,15 +219,16 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                 units = int(time_difference.seconds / seconds)
 
             if (not use_hotel_booking_time and time_difference.seconds % seconds != 0) or \
-            (not use_hotel_booking_time and (start.time() < min_hour or start.time() >= max_hour or end.time() <= min_hour or end.time() > max_hour )) or \
-            (start >= end) or (units < min_unit) or (units > max_unit):
+                (not use_hotel_booking_time and (start.time() < min_hour or start.time() >= max_hour or end.time() <= min_hour or end.time() > max_hour)) or \
+                    (start >= end) or (units < min_unit) or (units > max_unit):
                 raise serializers.ValidationError(
                     {'product_id': product.pk, 'message': 'Параметры брони изменились. Пожалуйста, перебронируйте товар'})
-                    
+
             extra_price = 0
             interval_queryset = ProductSpecialInterval.objects.filter(
-                    condition_constructor(start, end)).filter(product=product)
-            weekends_queryset = ProductSpecialInterval.objects.filter(common_type='E', product=product)
+                condition_constructor(start, end)).filter(product=product)
+            weekends_queryset = ProductSpecialInterval.objects.filter(
+                common_type='E', product=product)
             fixed_end = end.replace(hour=14) if use_hotel_booking_time else end
             if interval_queryset.exists():
                 interval = interval_queryset.get()
@@ -229,22 +236,27 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                 interval_end = interval.end_datetime
 
                 if time_unit == 'H':
-                    extra_price += interval.additional_price_per_unit * overlapping(interval_start, interval_end, start, fixed_end, days=False)
+                    extra_price += interval.additional_price_per_unit * \
+                        overlapping(interval_start, interval_end,
+                                    start, fixed_end, days=False)
                 else:
-                    extra_price += overlapping(interval_start, interval_end, start, fixed_end) * interval.additional_price_per_unit
+                    extra_price += overlapping(interval_start, interval_end,
+                                               start, fixed_end) * interval.additional_price_per_unit
                     if weekends_queryset.exists():
                         weekends_price = weekends_queryset.get()
-                        interval_weekends = count_of_weekends(interval_start, interval_end)
+                        interval_weekends = count_of_weekends(
+                            interval_start, interval_end)
                         user_weekends = count_of_weekends(start, fixed_end)
-                        extra_price += weekends_price.additional_price_per_unit * max(0, (user_weekends - interval_weekends))
+                        extra_price += weekends_price.additional_price_per_unit * \
+                            max(0, (user_weekends - interval_weekends))
 
             elif weekends_queryset.exists():
                 weekends_price = weekends_queryset.get()
                 if time_unit == 'H' and start.weekday() > 4:
                     extra_price += weekends_price.additional_price_per_unit * units
                 elif time_unit == 'D':
-                    extra_price += count_of_weekends(start, fixed_end) * weekends_price.additional_price_per_unit
-
+                    extra_price += count_of_weekends(
+                        start, fixed_end) * weekends_price.additional_price_per_unit
 
             total_price = unit_price * units + extra_price
             # /product total price calculator
@@ -309,6 +321,12 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                 send = smsApi.send(
                     phone, f'Подтвердите бронирование. Код верификации: {code}')
 
+            try:
+                sending = [send_push_message(tokenObj.push_token, 'Forest House', 'Поступил новый заказ!')
+                    for tokenObj in UserPushNotificationToken.objects.all()]
+            except:
+                pass
+
             return self.instance
 
 
@@ -330,14 +348,16 @@ class VerifyOrderWithCodeSerializer(serializers.ModelSerializer):
                 if order.attempts_left == 0:
                     order.status = 'F'
                     order.save()
-                    raise serializers.ValidationError({'message': 'Вы превысили количество попыток ввода верификационного кода. Заказ помечен как недействительный. Позвоните нам чтобы верифицировать заказ.'})
-                order.attempts_left = order.attempts_left - 1    
+                    raise serializers.ValidationError(
+                        {'message': 'Вы превысили количество попыток ввода верификационного кода. Заказ помечен как недействительный. Позвоните нам чтобы верифицировать заказ.'})
+                order.attempts_left = order.attempts_left - 1
                 order.save()
                 raise serializers.ValidationError(
-                {'message': 'Неверный код верификации'})
+                    {'message': 'Неверный код верификации'})
         except Order.DoesNotExist:
             raise serializers.ValidationError({'message':
                                                'Заказ со статусом "Ожидает верификационный код" не найден'})
+
 
 class GetNewOrderCodeSerializer(serializers.Serializer):
     def save(self, **kwargs):
@@ -345,14 +365,15 @@ class GetNewOrderCodeSerializer(serializers.Serializer):
         try:
             order = Order.objects.get(pk=order_id, status='W')
             if order.resends_left == 0:
-                raise serializers.ValidationError({'message': 'Вы превысили количество отправок верификационного кода. Позвоните нам если Вам не удалось верифицировать заказ'})
+                raise serializers.ValidationError(
+                    {'message': 'Вы превысили количество отправок верификационного кода. Позвоните нам если Вам не удалось верифицировать заказ'})
 
             digits = '0123456789'
             code = ''.join(random.choices(digits, k=4))
 
             if not settings.DEBUG:
                 smsApi = SmsAero(settings.SMSAERO_LOGIN,
-                                    settings.SMSAERO_API_KEY)
+                                 settings.SMSAERO_API_KEY)
                 send = smsApi.send(
                     order.phone, f'Подтвердите бронирование. Код верификации: {code}')
 
@@ -360,8 +381,9 @@ class GetNewOrderCodeSerializer(serializers.Serializer):
             order.resends_left = order.resends_left - 1
             order.save()
         except Order.DoesNotExist:
-            raise serializers.ValidationError({'message': 'Заказ со статусом "Ожидает верификационный код" не найден'})
-                
+            raise serializers.ValidationError(
+                {'message': 'Заказ со статусом "Ожидает верификационный код" не найден'})
+
 
 class GetOrderSerializer(serializers.Serializer):
     code = serializers.CharField()
@@ -448,8 +470,8 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
             units = int(time_difference.seconds / seconds)
 
         if (not use_hotel_booking_time and time_difference.seconds % seconds != 0) or \
-        (not use_hotel_booking_time and (start.time() < min_hour or start.time() >= max_hour or end.time() <= min_hour or end.time() > max_hour )) or \
-        (start >= end) or (units < min_unit) or (units > max_unit):
+            (not use_hotel_booking_time and (start.time() < min_hour or start.time() >= max_hour or end.time() <= min_hour or end.time() > max_hour)) or \
+                (start >= end) or (units < min_unit) or (units > max_unit):
             raise serializers.ValidationError(
                 {'message': 'Некорректный ввод даты'})
 
@@ -463,8 +485,9 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
 
         extra_price = 0
         interval_queryset = ProductSpecialInterval.objects.filter(
-                condition_constructor(start, end)).filter(product=product)
-        weekends_queryset = ProductSpecialInterval.objects.filter(common_type='E', product=product)
+            condition_constructor(start, end)).filter(product=product)
+        weekends_queryset = ProductSpecialInterval.objects.filter(
+            common_type='E', product=product)
         fixed_end = end.replace(hour=14) if use_hotel_booking_time else end
         if interval_queryset.exists():
             interval = interval_queryset.get()
@@ -472,21 +495,27 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
             interval_end = interval.end_datetime
 
             if time_unit == 'H':
-                extra_price += interval.additional_price_per_unit * overlapping(interval_start, interval_end, start, fixed_end, days=False)
+                extra_price += interval.additional_price_per_unit * \
+                    overlapping(interval_start, interval_end,
+                                start, fixed_end, days=False)
             else:
-                extra_price += overlapping(interval_start, interval_end, start, fixed_end) * interval.additional_price_per_unit
+                extra_price += overlapping(interval_start, interval_end,
+                                           start, fixed_end) * interval.additional_price_per_unit
                 if weekends_queryset.exists():
                     weekends_price = weekends_queryset.get()
-                    interval_weekends = count_of_weekends(interval_start, interval_end)
+                    interval_weekends = count_of_weekends(
+                        interval_start, interval_end)
                     user_weekends = count_of_weekends(start, fixed_end)
-                    extra_price += weekends_price.additional_price_per_unit * max(0, (user_weekends - interval_weekends))
+                    extra_price += weekends_price.additional_price_per_unit * \
+                        max(0, (user_weekends - interval_weekends))
 
         elif weekends_queryset.exists():
             weekends_price = weekends_queryset.get()
             if time_unit == 'H' and start.weekday() > 4:
                 extra_price += weekends_price.additional_price_per_unit * units
             elif time_unit == 'D':
-                extra_price += count_of_weekends(start, fixed_end) * weekends_price.additional_price_per_unit
+                extra_price += count_of_weekends(start, fixed_end) * \
+                    weekends_price.additional_price_per_unit
 
         price = unit_price * units + extra_price
         self.instance = CartItem.objects.create(
@@ -527,3 +556,25 @@ class CartSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
     items = CartItemSerializer(many=True, read_only=True)
+
+
+class UserPushNotificationTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserPushNotificationToken
+        fields = '__all__'
+        read_only_fields = ['user']
+
+    def save(self, **kwargs):
+        push_token = self.validated_data['push_token']
+        request = self.context['request']
+        user = request.user
+
+        obj, created = UserPushNotificationToken.objects.get_or_create(
+            user=user, defaults={'push_token': push_token, 'user': user})
+        if not created:
+            obj.push_token = push_token
+            obj.save()
+        self.instance = obj
+        return self.instance
+
+    

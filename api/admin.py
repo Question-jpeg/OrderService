@@ -44,3 +44,7 @@ class CartItemAdmin(admin.ModelAdmin):
 @admin.register(models.ProductSpecialInterval)
 class ProductSpecialIntervalAdmin(admin.ModelAdmin):
     list_display = ['product', 'common_type', 'start_datetime', 'end_datetime', 'additional_price_per_unit']
+
+@admin.register(models.UserPushNotificationToken)
+class UserPushNotificationTokenAdmin(admin.ModelAdmin):
+    list_display = ['user', 'push_token']

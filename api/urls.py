@@ -4,6 +4,8 @@ from . import views
 router = routers.DefaultRouter()
 router.register('products', views.ProductViewSet, basename='products')
 router.register('orders', views.OrderViewSet, basename='orders')
+router.register('order-items', views.AllOrderItemsViewSet, basename='all-order-items')
+router.register('push-tokens', views.UserPushNotificationTokenViewSet, basename='push-tokens')
 router.register('carts', views.CartViewSet, basename='carts')
 
 orders_router = routers.NestedDefaultRouter(router, 'orders', lookup='order')
