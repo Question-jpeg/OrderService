@@ -419,6 +419,10 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
         if not is_available:
             raise serializers.ValidationError({'message': 'Товар недоступен'})
 
+        if use_hotel_booking_time:
+            start = start.replace(hour=14, minute=0, second=0, microsecond=0)
+            end = end.replace(hour=12, minute=0, second=0, microsecond=0)
+
         if required_product:
             if not CartItem.objects.filter(cart_id=cart_id, product=required_product).exists():
                 raise serializers.ValidationError(
@@ -433,9 +437,6 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
                 )
 
         if use_hotel_booking_time:
-            start = start.replace(hour=14, minute=0, second=0, microsecond=0)
-            end = end.replace(hour=12, minute=0, second=0, microsecond=0)
-
             time_difference = end.replace(hour=14) - start
             units = time_difference.days
         else:
