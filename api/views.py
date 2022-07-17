@@ -12,7 +12,7 @@ from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSe
 
 
 class OrderViewSet(ModelViewSet):
-    queryset = Order.objects.prefetch_related('items__product__files', 'items__product__product_special_intervals').select_related('items__product__required_product')
+    queryset = Order.objects.prefetch_related('items__product__files', 'items__product__product_special_intervals', 'items__product__required_product')
 
     def create(self, request, *args, **kwargs):
         serializer = CreateOrderSerializer(
@@ -90,13 +90,13 @@ class OrderItemViewSet(ModelViewSet):
     permission_classes = [IsAdminUser]
 
     def get_queryset(self):
-        return OrderItem.objects.filter(order=self.kwargs['order_pk']).prefetch_related('product__files', 'product__product_special_intervals').select_related('product__required_product')
+        return OrderItem.objects.filter(order=self.kwargs['order_pk']).prefetch_related('product__files', 'product__product_special_intervals', 'product__required_product')
 
 class AllOrderItemsViewSet(ModelViewSet):
     http_method_names = ['get']
     serializer_class = OrderItemSerializer
     permission_classes = [IsAdminUser]
-    queryset = OrderItem.objects.filter(Q(order__status='P')) .prefetch_related('product__files', 'product__product_special_intervals').select_related('product__required_product')
+    queryset = OrderItem.objects.filter(Q(order__status='P')) .prefetch_related('product__files', 'product__product_special_intervals', 'product__required_product')
 
 class ProductViewSet(ModelViewSet):
     queryset = Product.objects.prefetch_related(
@@ -132,7 +132,7 @@ class ProductViewSet(ModelViewSet):
 
 
 class CartViewSet(ModelViewSet):
-    queryset = Cart.objects.prefetch_related('items__product__files', 'items__product__product_special_intervals').select_related('items__product__required_product')
+    queryset = Cart.objects.prefetch_related('items__product__files', 'items__product__product_special_intervals', 'items__product__required_product')
     serializer_class = CartSerializer
 
     def get_permissions(self):
@@ -143,7 +143,7 @@ class CartViewSet(ModelViewSet):
 
 class CartItemViewSet(ModelViewSet):
     def get_queryset(self):
-        return CartItem.objects.filter(cart=self.kwargs['cart_pk']).prefetch_related('product__files', 'product__product_special_intervals').select_related('product__required_product')
+        return CartItem.objects.filter(cart=self.kwargs['cart_pk']).prefetch_related('product__files', 'product__product_special_intervals', 'product__required_product')
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
