@@ -101,6 +101,7 @@ class OrderItem(models.Model):
     product = models.ForeignKey(to=Product, on_delete=models.PROTECT, related_name='order_items')
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
+    quantity = models.IntegerField(default=1)
     total_price = models.IntegerField()
 
 class Cart(models.Model):
@@ -123,6 +124,7 @@ class CartItem(models.Model):
     product = models.ForeignKey(to=Product, on_delete=models.PROTECT, related_name='+')
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
+    quantity = models.IntegerField(default=1)
     price = models.IntegerField()
 
 class UserPushNotificationToken(models.Model):

@@ -196,6 +196,7 @@ class CreateOrderSerializer(serializers.ModelSerializer):
 
             start = cart_item.start_datetime
             end = cart_item.end_datetime
+            quantity = cart_item.quantity
             price = cart_item.price
 
             if not product.is_available:
@@ -258,7 +259,7 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                     extra_price += count_of_weekends(
                         start, fixed_end) * weekends_price.additional_price_per_unit
 
-            total_price = unit_price * units + extra_price
+            total_price =(unit_price * units + extra_price) * quantity
             # /product total price calculator
 
             if (required_product):
@@ -274,7 +275,7 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                     {'product_id': product.pk, 'message': 'Похоже, что кто то уже забронировал этот товар на введённое вами время'})
 
             list_for_filling.append(
-                {'product': product, 'start_datetime': start, 'end_datetime': end, 'total_price': total_price})
+                {'product': product, 'start_datetime': start, 'end_datetime': end, 'total_price': total_price, 'quantity': quantity})
 
             total += total_price
             cart_items_total += price
@@ -425,6 +426,7 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
         product = self.validated_data['product']
         start = self.validated_data['start_datetime']
         end = self.validated_data['end_datetime']
+        quantity = self.validated_data['quantity']
 
         # product properties
         unit_price = product.unit_price
@@ -517,16 +519,16 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
                 extra_price += count_of_weekends(start, fixed_end) * \
                     weekends_price.additional_price_per_unit
 
-        price = unit_price * units + extra_price
+        price = (unit_price * units + extra_price) * quantity
         self.instance = CartItem.objects.create(
-            cart_id=cart_id, product=product, start_datetime=start, end_datetime=end, price=price)
+            cart_id=cart_id, product=product, start_datetime=start, end_datetime=end, price=price, quantity=quantity)
         return self.instance
 
 
 class UpdateCartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
-        fields = ['start_datetime', 'end_datetime', 'product', 'price']
+        fields = ['start_datetime', 'end_datetime', 'product', 'price', 'quantity']
         read_only_fields = ['price']
 
     product = ProductSerializer(read_only=True)
@@ -536,13 +538,14 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
             cart_item = self.instance
             start = self.validated_data['start_datetime']
             end = self.validated_data['end_datetime']
+            quantity = self.validated_data['quantity']
             cart = cart_item.cart
             product = cart_item.product
 
             cart_item.delete()
 
             serializer = CreateCartItemSerializer(
-                data={'product': product.pk, 'start_datetime': start, 'end_datetime': end}, context={'cart_id': cart.pk})
+                data={'product': product.pk, 'start_datetime': start, 'end_datetime': end, 'quantity': quantity}, context={'cart_id': cart.pk})
             serializer.is_valid(raise_exception=True)
             self.instance = serializer.save()
 
