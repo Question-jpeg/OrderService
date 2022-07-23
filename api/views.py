@@ -154,7 +154,10 @@ class ProductFileViewSet(ModelViewSet):
 
 
 class ProductSpecialIntervalViewSet(ModelViewSet):
-    serializer_class = ProductSpecialIntervalSerializer
+    def get_serializer_class(self):
+        if self.action == 'deleteIds':
+            return DeleteSpecialIntervalsSerializer
+        return ProductSpecialIntervalSerializer
 
     def get_serializer_context(self):
         return {'request': self.request, 'product_id': self.kwargs['product_pk']}
