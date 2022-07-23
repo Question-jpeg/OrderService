@@ -3,6 +3,7 @@ from django.db.models.signals import post_delete, pre_save
 from django.dispatch import receiver
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator
  
 """ Whenever ANY model is deleted, if it has a file field on it, delete the associated file too."""
 @receiver(post_delete)
@@ -55,7 +56,7 @@ class Product(models.Model):
     title = models.CharField(max_length=255)
     unit_price = models.IntegerField()
     min_unit = models.PositiveSmallIntegerField()
-    max_unit = models.PositiveSmallIntegerField()
+    max_unit = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
     time_unit = models.CharField(max_length=1, choices=TIME_UNIT_CHOICES)
     min_hour = models.TimeField(null=True, blank=True)
     max_hour = models.TimeField(null=True, blank=True)
@@ -63,7 +64,7 @@ class Product(models.Model):
     is_available = models.BooleanField(default=True)
     use_hotel_booking_time = models.BooleanField()
     description = models.TextField(null=True, blank=True)
-    max_persons = models.SmallIntegerField()
+    max_persons = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
 
     def __str__(self) -> str:
         return self.title
@@ -88,7 +89,6 @@ class Order(models.Model):
     phone = models.CharField(max_length=15)
     name = models.CharField(max_length=255)
     status = models.CharField(max_length=1, choices=PAYMENT_STATUS_CHOICES, default=PAYMENT_STATUS_WAITING)
-    total_price = models.IntegerField()
     code = models.CharField(max_length=4)
     attempts_left = models.SmallIntegerField()
     resends_left = models.SmallIntegerField()
@@ -101,12 +101,12 @@ class OrderItem(models.Model):
     product = models.ForeignKey(to=Product, on_delete=models.PROTECT, related_name='order_items')
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
-    quantity = models.IntegerField(default=1)
+    quantity = models.PositiveSmallIntegerField(default=1, validators=[MinValueValidator(1)])
     total_price = models.IntegerField()
 
 class Cart(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4)
-    persons = models.PositiveSmallIntegerField()
+    persons = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
 
 class ProductSpecialInterval(models.Model):
     COMMON_TYPE_WEEKENDS = 'E'
@@ -124,7 +124,7 @@ class CartItem(models.Model):
     product = models.ForeignKey(to=Product, on_delete=models.PROTECT, related_name='+')
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
-    quantity = models.IntegerField(default=1)
+    quantity = models.PositiveSmallIntegerField(default=1, validators=[MinValueValidator(1)])
     price = models.IntegerField()
 
 class UserPushNotificationToken(models.Model):

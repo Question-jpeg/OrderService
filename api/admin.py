@@ -13,7 +13,7 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
-    list_display = ['id', 'phone', 'name', 'status', 'total_price', 'created_at']
+    list_display = ['id', 'phone', 'name', 'status', 'created_at']
 
 class ProductSpecialIntervalInline(admin.TabularInline):
     model = models.ProductSpecialInterval
