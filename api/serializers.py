@@ -105,6 +105,14 @@ class ProductSpecialIntervalSerializer(serializers.ModelSerializer):
 
         return self.instance
 
+class DeleteSpecialIntervalsSerializer(serializers.Serializer):
+    intervals_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+
+    def save(self, **kwargs):
+        product_id = self.context['product_id']
+        product = get_object_or_404(Product.objects.all(), pk=product_id)
+        intervals_ids = self.validated_data['intervals_ids']
+        ProductSpecialInterval.objects.filter(pk__in=intervals_ids, product=product).delete()
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:

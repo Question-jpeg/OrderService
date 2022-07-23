@@ -8,10 +8,11 @@ from rest_framework.decorators import action
 
 from api.models import Cart, CartItem, ProductFile, ProductSpecialInterval, Order, OrderItem, Product, UserPushNotificationToken
 from api.permissions import IsAdminUserOrPostOnly, IsOwner
-from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteProductFilesSerializer, GetNewOrderCodeSerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
+from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteProductFilesSerializer, DeleteSpecialIntervalsSerializer, GetNewOrderCodeSerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
 
 
 class OrderViewSet(ModelViewSet):
+    # TODO: ADD PAGINATION
     queryset = Order.objects.prefetch_related(
         'items__product__files', 'items__product__product_special_intervals', 'items__product__required_product')
 
@@ -76,15 +77,6 @@ class OrderViewSet(ModelViewSet):
 
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post'])
-    def mark_order_as_failed(self, request, pk):
-        serializer = MarkOrderAsFailedSerializer(
-            data=request.data, context={'order_id': pk})
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response('Заказ отмечен как недействительный', status=status.HTTP_200_OK)
-
 
 class OrderItemViewSet(ModelViewSet):
     permission_classes = [IsAdminUser]
@@ -104,6 +96,7 @@ class OrderItemViewSet(ModelViewSet):
 
 
 class AllOrderItemsViewSet(ModelViewSet):
+    # TODO: ADD PAGINATION
     http_method_names = ['get']
     serializer_class = OrderItemSerializer
     permission_classes = [IsAdminUser]
@@ -130,12 +123,7 @@ class ProductViewSet(ModelViewSet):
         queryset = OrderItem.objects.filter(product_id=pk)
         serializer = OrderItemTimeSerializer(queryset, many=True)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @action(detail=True, methods=['get'])
-    def productSpecialIntervalView(self, request, pk):
-        queryset = ProductSpecialInterval.objects.filter(product_id=pk)
-        serializer = ProductSpecialIntervalSerializer(queryset, many=True)
+        # TODO: ADD PAGINATION
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -179,8 +167,17 @@ class ProductSpecialIntervalViewSet(ModelViewSet):
     def get_queryset(self):
         return ProductSpecialInterval.objects.filter(product_id=self.kwargs['product_pk'])
 
+    @action(methods=['post'], detail=False)
+    def deleteIds(self, request):
+        serializer = DeleteSpecialIntervalsSerializer(data=request.data, context=self.get_serializer_context())
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
+
 
 class CartViewSet(ModelViewSet):
+    # TODO: ADD PAGINATION
     queryset = Cart.objects.prefetch_related(
         'items__product__files', 'items__product__product_special_intervals', 'items__product__required_product')
     serializer_class = CartSerializer
