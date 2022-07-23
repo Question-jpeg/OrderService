@@ -168,6 +168,9 @@ class ProductFileViewSet(ModelViewSet):
 class ProductSpecialIntervalViewSet(ModelViewSet):
     serializer_class = ProductSpecialIntervalSerializer
 
+    def get_serializer_context(self):
+        return {'request': self.request, 'product_id': self.kwargs['product_pk']}
+
     def get_permissions(self):
         if self.request.method not in SAFE_METHODS:
             return [IsAdminUser()]

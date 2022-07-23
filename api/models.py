@@ -109,13 +109,9 @@ class Cart(models.Model):
     persons = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
 
 class ProductSpecialInterval(models.Model):
-    COMMON_TYPE_WEEKENDS = 'E'
-    COMMON_TYPE_CHOICES = [
-        (COMMON_TYPE_WEEKENDS, 'Выходные')
-    ]
     start_datetime = models.DateTimeField(null=True, blank=True)
     end_datetime = models.DateTimeField(null=True, blank=True)
-    common_type = models.CharField(null=True, blank=True, choices=COMMON_TYPE_CHOICES, max_length=1)
+    is_weekends = models.BooleanField(null=True, blank=True)
     product = models.ForeignKey(to=Product, on_delete=models.CASCADE, related_name='product_special_intervals')
     additional_price_per_unit = models.IntegerField()
 

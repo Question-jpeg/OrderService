@@ -18,20 +18,25 @@ class ProductFileSerializer(serializers.ModelSerializer):
         model = ProductFile
         fields = ['id', 'file']
 
+
 class CreateProductFilesSerializer(serializers.Serializer):
-    files = serializers.ListField(child=serializers.FileField(), allow_empty=False)
+    files = serializers.ListField(
+        child=serializers.FileField(), allow_empty=False)
 
     def save(self, **kwargs):
         product_id = self.context['product_id']
         product = get_object_or_404(Product.objects.all(), pk=product_id)
         files = self.validated_data['files']
 
-        list_for_create = [ProductFile(product=product, file=file) for file in files]
+        list_for_create = [ProductFile(
+            product=product, file=file) for file in files]
 
         ProductFile.objects.bulk_create(list_for_create)
 
+
 class DeleteProductFilesSerializer(serializers.Serializer):
-    files_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    files_ids = serializers.ListField(
+        child=serializers.IntegerField(), allow_empty=False)
 
     def save(self, **kwargs):
         product_id = self.context['product_id']
@@ -49,7 +54,56 @@ class ProductSimpleSerializer(serializers.ModelSerializer):
 class ProductSpecialIntervalSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSpecialInterval
-        fields = '__all__'
+        exclude = ['product']
+
+    def save(self, **kwargs):
+        start_datetime = self.validated_data['start_datetime']
+        end_datetime = self.validated_data['end_datetime']
+        is_weekends = self.validated_data['is_weekends']
+        additional_price_per_unit = self.validated_data['additional_price_per_unit']
+        product_id = self.context['product_id']
+        product = get_object_or_404(Product.objects.all(), pk=product_id)
+
+        if (start_datetime is None) and (end_datetime is None) and (not is_weekends):
+            raise serializers.ValidationError(
+                {'message': 'Не заполнен ни один из временных параметров'})
+
+        if ((start_datetime is not None) or (end_datetime is not None)) and is_weekends:
+            raise serializers.ValidationError(
+                {'message': 'Указаны несовместимые параметры'})
+
+        if ((start_datetime is not None) and (end_datetime is None)) or ((start_datetime is None) and (end_datetime is not None)):
+            raise serializers.ValidationError(
+                {'message': 'Одна из дат не заполнена'})
+
+        queryset = ProductSpecialInterval.objects.all()
+        queryset = queryset.filter(~Q(pk=self.instance.pk)) if self.instance else queryset
+
+        if not is_weekends:
+            start_datetime = start_datetime.replace(
+                hour=0, minute=0, second=0, microsecond=0)
+            end_datetime = end_datetime.replace(
+                hour=0, minute=0, second=0, microsecond=0)
+            queryset = queryset.filter(
+                condition_constructor(start_datetime, end_datetime))
+        else:
+            queryset = queryset.filter(is_weekends=True)
+
+        if queryset.exists():
+            raise serializers.ValidationError(
+                {'message': 'Аналогичный интервал уже добавлен'})
+
+        if self.instance:
+            self.instance.start_datetime = start_datetime
+            self.instance.end_datetime = end_datetime
+            self.instance.is_weekends = is_weekends
+            self.instance.additional_price_per_unit = additional_price_per_unit
+            self.instance.save()
+        else:
+            self.instance = ProductSpecialInterval.objects.create(
+                start_datetime=start_datetime, end_datetime=end_datetime, is_weekends=is_weekends, additional_price_per_unit=additional_price_per_unit, product=product)
+
+        return self.instance
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -138,7 +192,7 @@ def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_m
     interval_queryset = ProductSpecialInterval.objects.filter(
         condition_constructor(start, end)).filter(product=product)
     weekends_queryset = ProductSpecialInterval.objects.filter(
-        common_type='E', product=product)
+        is_weekends=True, product=product)
     if interval_queryset.exists():
         interval = interval_queryset.get()
         interval_start = interval.start_datetime
