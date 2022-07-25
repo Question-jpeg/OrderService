@@ -7,12 +7,13 @@ from rest_framework.permissions import IsAdminUser, AllowAny, SAFE_METHODS
 from rest_framework.decorators import action
 
 from api.models import Cart, CartItem, ProductFile, ProductSpecialInterval, Order, OrderItem, Product, UserPushNotificationToken
+from api.pagination import DefaultPagination
 from api.permissions import IsAdminUserOrPostOnly, IsOwner
 from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteProductFilesSerializer, DeleteSpecialIntervalsSerializer, GetNewOrderCodeSerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
 
 
 class OrderViewSet(ModelViewSet):
-    # TODO: ADD PAGINATION
+    pagination_class = DefaultPagination
     queryset = Order.objects.prefetch_related(
         'items__product__files', 'items__product__product_special_intervals', 'items__product__required_product')
 
@@ -96,7 +97,7 @@ class OrderItemViewSet(ModelViewSet):
 
 
 class AllOrderItemsViewSet(ModelViewSet):
-    # TODO: ADD PAGINATION
+    pagination_class = DefaultPagination
     http_method_names = ['get']
     serializer_class = OrderItemSerializer
     permission_classes = [IsAdminUser]
@@ -109,23 +110,25 @@ class ProductViewSet(ModelViewSet):
         'files', 'product_special_intervals').select_related('required_product')
 
     def get_serializer_class(self):
+        if self.action == 'timeView':
+            return OrderItemTimeSerializer
         if self.request.method in SAFE_METHODS:
             return ProductSerializer
         return ProductSimpleSerializer
 
     def get_permissions(self):
-        if self.request.method in SAFE_METHODS:
+        method = self.request.method
+        if method in SAFE_METHODS or self.action == 'timeView':
             return [AllowAny()]
         return [IsAdminUser()]
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['post'])
     def timeView(self, request, pk):
-        queryset = OrderItem.objects.filter(product_id=pk)
-        serializer = OrderItemTimeSerializer(queryset, many=True)
+        serializer = OrderItemTimeSerializer(data=request.data, context={'product_id': pk})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.save()
 
-        # TODO: ADD PAGINATION
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class ProductFileViewSet(ModelViewSet):
@@ -180,7 +183,7 @@ class ProductSpecialIntervalViewSet(ModelViewSet):
 
 
 class CartViewSet(ModelViewSet):
-    # TODO: ADD PAGINATION
+    pagination_class = DefaultPagination
     queryset = Cart.objects.prefetch_related(
         'items__product__files', 'items__product__product_special_intervals', 'items__product__required_product')
     serializer_class = CartSerializer

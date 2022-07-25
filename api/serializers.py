@@ -241,11 +241,19 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     product = ProductSerializer()
 
-
-class OrderItemTimeSerializer(serializers.ModelSerializer):
+class OrderItemTimeInnerSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ['start_datetime', 'end_datetime']
+
+class OrderItemTimeSerializer(serializers.Serializer):
+    current_datetime = serializers.DateTimeField()
+
+    def save(self, **kwargs):
+        current_datetime = self.validated_data['current_datetime']
+        product_id = self.context['product_id']
+        queryset = OrderItem.objects.filter(end_datetime__gt=current_datetime, product_id=product_id)
+        return OrderItemTimeInnerSerializer(queryset, many=True).data
 
 
 class OrderSerializer(serializers.ModelSerializer):
