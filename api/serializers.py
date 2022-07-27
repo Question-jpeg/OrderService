@@ -77,7 +77,7 @@ class ProductSpecialIntervalSerializer(serializers.ModelSerializer):
                 {'message': 'Одна из дат не заполнена'})
 
         queryset = ProductSpecialInterval.objects.all()
-        queryset = queryset.filter(~(Q(pk=self.instance.pk) & Q(product_id=product_id))) if self.instance else queryset
+        queryset = queryset.filter(~Q(pk=self.instance.pk)).filter(product_id=product_id) if self.instance else queryset
 
         if not is_weekends:
             start_datetime = start_datetime.replace(
