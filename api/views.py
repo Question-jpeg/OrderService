@@ -148,7 +148,7 @@ class ProductFileViewSet(ModelViewSet):
         return ProductFile.objects.filter(product=self.kwargs['product_pk'])
 
     @action(methods=['post'], detail=False)
-    def deleteIds(self, request):
+    def deleteIds(self, request, product_pk):
         serializer = DeleteProductFilesSerializer(data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         serializer.save()
