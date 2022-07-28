@@ -16,7 +16,7 @@ from .smsaero import SmsAero
 class ProductFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductFile
-        fields = ['id', 'file']
+        exclude = ['product']
 
 
 class CreateProductFilesSerializer(serializers.Serializer):
@@ -30,6 +30,9 @@ class CreateProductFilesSerializer(serializers.Serializer):
 
         list_for_create = [ProductFile(
             product=product, file=file) for file in files]
+
+        if not ProductFile.objects.filter(product_id=product_id).exists():
+            list_for_create[0].is_primary = True
 
         ProductFile.objects.bulk_create(list_for_create)
 
@@ -46,20 +49,19 @@ class DeleteProductFilesSerializer(serializers.Serializer):
 
 class MakeFilePrimarySerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    file = serializers.FileField(read_only=True)
 
     def save(self, **kwargs):
         with transaction.atomic():
             id = self.validated_data['id']
             product_id = self.context['product_id']
-            selected_file = get_object_or_404(ProductFile.objects.all(), product_id=product_id, pk=id)
-            current_primary_file = ProductFile.objects.first()
             
+            ProductFile.objects.exclude(pk=id, product_id=product_id).update(is_primary=False)
             
-            current_primary_file.file, selected_file.file = selected_file.file, current_primary_file.file
-            selected_file.save()
-            current_primary_file.save()
-            self.instance = current_primary_file
+            file_instance = get_object_or_404(ProductFile.objects.all(), product_id=product_id, pk=id)
+            file_instance.is_primary = True
+            file_instance.save()
+            
+            self.instance = file_instance
             return self.instance
 
 class ProductSimpleSerializer(serializers.ModelSerializer):

@@ -72,6 +72,10 @@ class Product(models.Model):
 class ProductFile(models.Model):
     product = models.ForeignKey(to=Product, on_delete=models.CASCADE, related_name='files')
     file = models.FileField(upload_to='files')
+    is_primary = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-is_primary']
 
 class Order(models.Model):
 
