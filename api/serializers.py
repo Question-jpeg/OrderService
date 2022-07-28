@@ -44,6 +44,23 @@ class DeleteProductFilesSerializer(serializers.Serializer):
         files_ids = self.validated_data['files_ids']
         ProductFile.objects.filter(pk__in=files_ids, product=product).delete()
 
+class MakeFilePrimarySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    file = serializers.FileField(read_only=True)
+
+    def save(self, **kwargs):
+        with transaction.atomic():
+            id = self.validated_data['id']
+            product_id = self.context['product_id']
+            selected_file = get_object_or_404(ProductFile.objects.all(), product_id=product_id, pk=id)
+            current_primary_file = ProductFile.objects.first()
+            
+            
+            current_primary_file.file, selected_file.file = selected_file.file, current_primary_file.file
+            selected_file.save()
+            current_primary_file.save()
+            self.instance = current_primary_file
+            return self.instance
 
 class ProductSimpleSerializer(serializers.ModelSerializer):
     class Meta:

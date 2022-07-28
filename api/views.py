@@ -9,7 +9,7 @@ from rest_framework.decorators import action
 from api.models import Cart, CartItem, ProductFile, ProductSpecialInterval, Order, OrderItem, Product, UserPushNotificationToken
 from api.pagination import DefaultPagination
 from api.permissions import IsAdminUserOrPostOnly, IsOwner
-from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteProductFilesSerializer, DeleteSpecialIntervalsSerializer, GetNewOrderCodeSerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
+from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteProductFilesSerializer, DeleteSpecialIntervalsSerializer, GetNewOrderCodeSerializer, MakeFilePrimarySerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
 
 
 class OrderViewSet(ModelViewSet):
@@ -138,6 +138,8 @@ class ProductFileViewSet(ModelViewSet):
         return {'request': self.request, 'product_id': self.kwargs['product_pk']}
 
     def get_serializer_class(self):
+        if self.action == 'makePrimary':
+            return MakeFilePrimarySerializer
         if self.action == 'deleteIds':
             return DeleteProductFilesSerializer
         if self.request.method == 'POST':
@@ -154,6 +156,14 @@ class ProductFileViewSet(ModelViewSet):
         serializer.save()
 
         return Response({}, status=status.HTTP_204_NO_CONTENT)
+
+    @action(methods=['post'], detail=False)
+    def makePrimary(self, request, product_pk):
+        serializer = MakeFilePrimarySerializer(data=request.data, context=self.get_serializer_context())
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ProductSpecialIntervalViewSet(ModelViewSet):
