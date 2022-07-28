@@ -55,7 +55,7 @@ class MakeFilePrimarySerializer(serializers.Serializer):
             id = self.validated_data['id']
             product_id = self.context['product_id']
             
-            ProductFile.objects.exclude(pk=id, product_id=product_id).update(is_primary=False)
+            ProductFile.objects.filter(product_id=product_id).exclude(pk=id).update(is_primary=False)
             
             file_instance = get_object_or_404(ProductFile.objects.all(), product_id=product_id, pk=id)
             file_instance.is_primary = True
