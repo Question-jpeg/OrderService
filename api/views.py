@@ -110,6 +110,8 @@ class ProductViewSet(ModelViewSet):
         'files', 'product_special_intervals').select_related('required_product')
 
     def get_serializer_class(self):
+        if self.action == 'getPrice':
+            return GetProductPriceSerializer
         if self.action == 'timeView':
             return OrderItemTimeSerializer
         if self.request.method in SAFE_METHODS:
