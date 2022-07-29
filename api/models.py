@@ -64,7 +64,7 @@ class Product(models.Model):
     is_available = models.BooleanField(default=True)
     use_hotel_booking_time = models.BooleanField()
     description = models.TextField(null=True, blank=True)
-    max_persons = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
+    max_persons = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
 
     def __str__(self) -> str:
         return self.title
