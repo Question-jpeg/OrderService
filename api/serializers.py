@@ -269,8 +269,8 @@ def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_m
             extra_price += count_of_weekends(
                 start, fixed_end) * weekends_price.additional_price_per_unit
 
-    total_price = units * (unit_price + extra_price) * quantity
-    return total_price if not info else {'normal_price': unit_price * units * quantity, 'extra_price': extra_price * units * quantity, 'total_price': total_price}
+    total_price = (unit_price * units + extra_price) * quantity
+    return total_price if not info else {'normal_price': unit_price * units * quantity, 'extra_price': extra_price * quantity, 'total_price': total_price}
     # /product total price calculator
 
 
