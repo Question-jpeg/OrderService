@@ -166,10 +166,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
 def condition_constructor(start_time, end_time):
 
-    universal_query = Q(start_datetime__lte=end_time) & Q(
-        end_datetime__gte=start_time)
-
-    return universal_query
+    return ((Q(start_datetime__gte=start_time) & Q(start_datetime__lte=end_time)) | (
+                Q(end_datetime__gte=start_time) & Q(end_datetime__lte=end_time))) | (
+                    Q(start_datetime__lte=start_time) & Q(end_datetime__gte=end_time))
 
 
 def count_of_weekends(start_time, end_time):
