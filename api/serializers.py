@@ -42,10 +42,22 @@ class DeleteProductFilesSerializer(serializers.Serializer):
         child=serializers.IntegerField(), allow_empty=False)
 
     def save(self, **kwargs):
-        product_id = self.context['product_id']
-        product = get_object_or_404(Product.objects.all(), pk=product_id)
-        files_ids = self.validated_data['files_ids']
-        ProductFile.objects.filter(pk__in=files_ids, product=product).delete()
+        with transaction.atomic():
+            product_id = self.context['product_id']
+            product = get_object_or_404(Product.objects.all(), pk=product_id)
+            files_ids = self.validated_data['files_ids']
+            queryset = ProductFile.objects.filter(pk__in=files_ids, product=product)
+            
+            if queryset.filter(is_primary=True).exists():
+                queryset.delete()
+                queryset_general = ProductFile.objects.filter(product=product)
+                if (queryset_general.exists()):
+                    file = queryset_general.first()
+                    file.is_primary = True
+                    file.save()
+            else:
+                queryset.delete()
+
 
 class MakeFilePrimarySerializer(serializers.Serializer):
     id = serializers.IntegerField()
