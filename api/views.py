@@ -9,7 +9,7 @@ from rest_framework.decorators import action
 from api.models import Cart, CartItem, ProductFile, ProductSpecialInterval, Order, OrderItem, Product, UserPushNotificationToken
 from api.pagination import DefaultPagination
 from api.permissions import IsAdminUserOrPostOnly, IsOwner
-from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteProductFilesSerializer, DeleteSpecialIntervalsSerializer, GetNewOrderCodeSerializer, MakeFilePrimarySerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
+from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteProductFilesSerializer, DeleteSpecialIntervalsSerializer, GetNewOrderCodeSerializer, GetProductPriceSerializer, MakeFilePrimarySerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
 
 
 class OrderViewSet(ModelViewSet):
@@ -101,8 +101,8 @@ class AllOrderItemsViewSet(ModelViewSet):
     http_method_names = ['get']
     serializer_class = OrderItemSerializer
     permission_classes = [IsAdminUser]
-    queryset = OrderItem.objects.filter(Q(order__status='P')) .prefetch_related(
-        'product__files', 'product__product_special_intervals', 'product__required_product')
+    queryset = OrderItem.objects.filter(Q(order__status='P')).prefetch_related(
+        'product__files', 'product__product_special_intervals', 'product__required_product').order_by('-start_datetime')
 
 
 class ProductViewSet(ModelViewSet):
@@ -118,13 +118,22 @@ class ProductViewSet(ModelViewSet):
 
     def get_permissions(self):
         method = self.request.method
-        if method in SAFE_METHODS or self.action == 'timeView':
+        if (method in SAFE_METHODS) or (self.action == 'timeView') or (self.action == 'getPrice'):
             return [AllowAny()]
         return [IsAdminUser()]
 
     @action(detail=True, methods=['post'])
     def timeView(self, request, pk):
-        serializer = OrderItemTimeSerializer(data=request.data, context={'product_id': pk})
+        serializer = OrderItemTimeSerializer(
+            data=request.data, context={'product_id': pk})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.save()
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def getPrice(self, request, pk):
+        serializer = GetProductPriceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.save()
 
@@ -151,7 +160,8 @@ class ProductFileViewSet(ModelViewSet):
 
     @action(methods=['post'], detail=False)
     def deleteIds(self, request, product_pk):
-        serializer = DeleteProductFilesSerializer(data=request.data, context=self.get_serializer_context())
+        serializer = DeleteProductFilesSerializer(
+            data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
@@ -159,7 +169,8 @@ class ProductFileViewSet(ModelViewSet):
 
     @action(methods=['post'], detail=False)
     def makePrimary(self, request, product_pk):
-        serializer = MakeFilePrimarySerializer(data=request.data, context=self.get_serializer_context())
+        serializer = MakeFilePrimarySerializer(
+            data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
@@ -185,7 +196,8 @@ class ProductSpecialIntervalViewSet(ModelViewSet):
 
     @action(methods=['post'], detail=False)
     def deleteIds(self, request, product_pk):
-        serializer = DeleteSpecialIntervalsSerializer(data=request.data, context=self.get_serializer_context())
+        serializer = DeleteSpecialIntervalsSerializer(
+            data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         serializer.save()
 

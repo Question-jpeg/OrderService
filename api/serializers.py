@@ -46,8 +46,9 @@ class DeleteProductFilesSerializer(serializers.Serializer):
             product_id = self.context['product_id']
             product = get_object_or_404(Product.objects.all(), pk=product_id)
             files_ids = self.validated_data['files_ids']
-            queryset = ProductFile.objects.filter(pk__in=files_ids, product=product)
-            
+            queryset = ProductFile.objects.filter(
+                pk__in=files_ids, product=product)
+
             if queryset.filter(is_primary=True).exists():
                 queryset.delete()
                 queryset_general = ProductFile.objects.filter(product=product)
@@ -66,15 +67,18 @@ class MakeFilePrimarySerializer(serializers.Serializer):
         with transaction.atomic():
             id = self.validated_data['id']
             product_id = self.context['product_id']
-            
-            ProductFile.objects.filter(product_id=product_id).exclude(pk=id).update(is_primary=False)
-            
-            file_instance = get_object_or_404(ProductFile.objects.all(), product_id=product_id, pk=id)
+
+            ProductFile.objects.filter(product_id=product_id).exclude(
+                pk=id).update(is_primary=False)
+
+            file_instance = get_object_or_404(
+                ProductFile.objects.all(), product_id=product_id, pk=id)
             file_instance.is_primary = True
             file_instance.save()
-            
+
             self.instance = file_instance
             return self.instance
+
 
 class ProductSimpleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -108,7 +112,8 @@ class ProductSpecialIntervalSerializer(serializers.ModelSerializer):
                 {'message': 'Одна из дат не заполнена'})
 
         queryset = ProductSpecialInterval.objects.filter(product_id=product_id)
-        queryset = queryset.filter(~Q(pk=self.instance.pk)) if self.instance else queryset
+        queryset = queryset.filter(
+            ~Q(pk=self.instance.pk)) if self.instance else queryset
 
         if not is_weekends:
             start_datetime = start_datetime.replace(
@@ -136,14 +141,18 @@ class ProductSpecialIntervalSerializer(serializers.ModelSerializer):
 
         return self.instance
 
+
 class DeleteSpecialIntervalsSerializer(serializers.Serializer):
-    intervals_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    intervals_ids = serializers.ListField(
+        child=serializers.IntegerField(), allow_empty=False)
 
     def save(self, **kwargs):
         product_id = self.context['product_id']
         product = get_object_or_404(Product.objects.all(), pk=product_id)
         intervals_ids = self.validated_data['intervals_ids']
-        ProductSpecialInterval.objects.filter(pk__in=intervals_ids, product=product).delete()
+        ProductSpecialInterval.objects.filter(
+            pk__in=intervals_ids, product=product).delete()
+
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -196,7 +205,7 @@ def is_time_in_range(start, end, x):
         return start <= x or x <= end
 
 
-def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_message):
+def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_message, info=False):
 
     if OrderItem.objects.filter(~Q(order__status='F')).filter(product=product).filter(condition_constructor(start, end)).exists():
         raise serializers.ValidationError(
@@ -260,9 +269,28 @@ def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_m
             extra_price += count_of_weekends(
                 start, fixed_end) * weekends_price.additional_price_per_unit
 
-    total_price = (unit_price * units + extra_price) * quantity
-    return total_price
+    total_price = units * (unit_price + extra_price) * quantity
+    return total_price if not info else {'normal_price': unit_price * units * quantity, 'extra_price': extra_price * units * quantity, 'total_price': total_price}
     # /product total price calculator
+
+
+class GetProductPriceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['start_datetime', 'end_datetime', 'quantity']
+
+    def save(self, **kwargs):
+        product = self.validated_data['product']
+        quantity = self.validated_data['quantity']
+        start_dat = self.validated_data['start_datetime']
+        end_dat = self.validated_data['end_datetime']
+
+        start, end, fixed_end = getStartEnd(
+            start_dat, end_dat, product.use_hotel_booking_time)
+        price_info = calculateProductTotalPrice(
+            start, end, fixed_end, product, quantity, 'Некорректный ввод даты', info=True)
+
+        return price_info
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -272,10 +300,12 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     product = ProductSerializer()
 
+
 class OrderItemTimeInnerSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ['start_datetime', 'end_datetime']
+
 
 class OrderItemTimeSerializer(serializers.Serializer):
     current_datetime = serializers.DateTimeField()
@@ -283,7 +313,8 @@ class OrderItemTimeSerializer(serializers.Serializer):
     def save(self, **kwargs):
         current_datetime = self.validated_data['current_datetime']
         product_id = self.context['product_id']
-        queryset = OrderItem.objects.filter(end_datetime__gt=current_datetime, product_id=product_id)
+        queryset = OrderItem.objects.filter(
+            end_datetime__gt=current_datetime, product_id=product_id)
         return OrderItemTimeInnerSerializer(queryset, many=True).data
 
 
