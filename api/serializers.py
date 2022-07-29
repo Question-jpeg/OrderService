@@ -224,10 +224,10 @@ def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_m
 
     if time_unit == 'H':
         seconds = 3600
+        units = int(time_difference.seconds / 3600)
     else:
         seconds = (60*60*24)
-
-    units = int(time_difference.seconds / seconds)
+        units = time_difference.days
 
     if (time_difference.seconds % seconds != 0) or \
         (not use_hotel_booking_time and (not is_time_in_range(min_hour, max_hour, start.time()) or
@@ -280,7 +280,8 @@ class GetProductPriceSerializer(serializers.ModelSerializer):
         fields = ['start_datetime', 'end_datetime', 'quantity']
 
     def save(self, **kwargs):
-        product = self.validated_data['product']
+        product_id = self.context['product_id']
+        product = get_object_or_404(Product.objects.all(), pk=product_id)
         quantity = self.validated_data['quantity']
         start_dat = self.validated_data['start_datetime']
         end_dat = self.validated_data['end_datetime']
