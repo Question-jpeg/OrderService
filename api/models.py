@@ -150,6 +150,9 @@ class ProductSpecialInterval(models.Model):
         to=Product, on_delete=models.CASCADE, related_name='product_special_intervals')
     additional_price_per_unit = models.IntegerField()
 
+    class Meta:
+        ordering = ['-is_weekends']
+
 
 class CartItem(models.Model):
     cart = models.ForeignKey(
