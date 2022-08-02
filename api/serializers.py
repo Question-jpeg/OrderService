@@ -275,10 +275,10 @@ def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_m
 
 
 class GetProductPriceSerializer(serializers.ModelSerializer):
-    exclude_order_item_id = serializers.IntegerField()
+    exclude_order_item_id = serializers.IntegerField(allow_null=True)
     class Meta:
         model = OrderItem
-        fields = ['start_datetime', 'end_datetime', 'quantity']
+        fields = ['start_datetime', 'end_datetime', 'quantity', 'exclude_order_item_id']
 
     def save(self, **kwargs):
         product_id = self.context['product_id']
