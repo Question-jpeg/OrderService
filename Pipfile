@@ -20,6 +20,7 @@ boto3 = "*"
 django-fs-smsaero = "*"
 psycopg2 = "*"
 exponent-server-sdk = "*"
+django-imagekit = "*"
 
 [dev-packages]
 autopep8 = "*"

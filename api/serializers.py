@@ -29,7 +29,7 @@ class CreateProductFilesSerializer(serializers.Serializer):
         files = self.validated_data['files']
 
         list_for_create = [ProductFile(
-            product=product, file=file) for file in files]
+            product=product, file=file, file_thumbnail=file) for file in files]
 
         if not ProductFile.objects.filter(product_id=product_id).exists():
             list_for_create[0].is_primary = True
