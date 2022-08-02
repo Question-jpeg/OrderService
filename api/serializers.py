@@ -166,8 +166,8 @@ class ProductSerializer(serializers.ModelSerializer):
 
 def condition_constructor(start_time, end_time):
 
-    universal_query = Q(start_datetime__lte=end_time) & Q(
-        end_datetime__gte=start_time)
+    universal_query = Q(start_datetime__lt=end_time) & Q(
+        end_datetime__gt=start_time)
 
     return universal_query
 
