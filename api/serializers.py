@@ -207,7 +207,7 @@ def is_time_in_range(start, end, x):
 
 def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_message, order_item_pk=None, info=False):
 
-    if OrderItem.objects.exclude(order__status='F', pk=order_item_pk).filter(product=product).filter(condition_constructor(start, end)).exists():
+    if OrderItem.objects.exclude(order__status='F').filter(product=product).exclude(pk=order_item_pk).filter(condition_constructor(start, end)).exists():
         raise serializers.ValidationError(
             {'product_id': product.pk, 'message': 'Похоже, что кто то уже забронировал этот товар на введённое вами время'})
 
