@@ -205,9 +205,9 @@ def is_time_in_range(start, end, x):
         return start <= x or x <= end
 
 
-def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_message, info=False):
+def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_message, order_item_pk=None, info=False):
 
-    if OrderItem.objects.filter(~Q(order__status='F')).filter(product=product).filter(condition_constructor(start, end)).exists():
+    if OrderItem.objects.exclude(order__status='F', pk=order_item_pk).filter(product=product).filter(condition_constructor(start, end)).exists():
         raise serializers.ValidationError(
             {'product_id': product.pk, 'message': 'Похоже, что кто то уже забронировал этот товар на введённое вами время'})
 
@@ -275,6 +275,7 @@ def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_m
 
 
 class GetProductPriceSerializer(serializers.ModelSerializer):
+    exclude_order_item_id = serializers.IntegerField()
     class Meta:
         model = OrderItem
         fields = ['start_datetime', 'end_datetime', 'quantity']
@@ -285,11 +286,12 @@ class GetProductPriceSerializer(serializers.ModelSerializer):
         quantity = self.validated_data['quantity']
         start_dat = self.validated_data['start_datetime']
         end_dat = self.validated_data['end_datetime']
+        exclude_order_item_id = self.validated_data['exclude_order_item_id']
 
         start, end, fixed_end = getStartEnd(
             start_dat, end_dat, product.use_hotel_booking_time)
         price_info = calculateProductTotalPrice(
-            start, end, fixed_end, product, quantity, 'Некорректный ввод даты', info=True)
+            start, end, fixed_end, product, quantity, 'Некорректный ввод даты', exclude_order_item_id, True)
 
         return price_info
 
@@ -566,7 +568,7 @@ class UpdateOrderItemSerializer(serializers.ModelSerializer):
             start_dat, end_dat, product.use_hotel_booking_time)
 
         price = calculateProductTotalPrice(
-            start, end, fixed_end, product, quantity, 'Некорректный ввод даты')
+            start, end, fixed_end, product, quantity, 'Некорректный ввод даты', order_item.pk)
 
         order_item.product = product
         order_item.quantity = quantity
