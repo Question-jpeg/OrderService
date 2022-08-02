@@ -124,13 +124,10 @@ class ProductViewSet(ModelViewSet):
             return [AllowAny()]
         return [IsAdminUser()]
 
-    def get_serializer_context(self):
-        return {'product_id': self.kwargs['pk']}
-
     @action(detail=True, methods=['post'])
     def timeView(self, request, pk):
         serializer = OrderItemTimeSerializer(
-            data=request.data, context=self.get_serializer_context())
+            data=request.data, context={'product_id': pk})
         serializer.is_valid(raise_exception=True)
         data = serializer.save()
 
@@ -138,7 +135,7 @@ class ProductViewSet(ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def getPrice(self, request, pk):
-        serializer = GetProductPriceSerializer(data=request.data, context=self.get_serializer_context())
+        serializer = GetProductPriceSerializer(data=request.data, context={'product_id': pk})
         serializer.is_valid(raise_exception=True)
         data = serializer.save()
 
