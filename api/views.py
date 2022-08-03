@@ -9,7 +9,7 @@ from rest_framework.decorators import action
 from api.models import Cart, CartItem, ProductFile, ProductSpecialInterval, Order, OrderItem, Product, UserPushNotificationToken
 from api.pagination import DefaultPagination
 from api.permissions import IsAdminUserOrPostOnly, IsOwner
-from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteProductFilesSerializer, DeleteSpecialIntervalsSerializer, GetNewOrderCodeSerializer, GetProductPriceSerializer, MakeFilePrimarySerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
+from api.serializers import CartItemSerializer, CartSerializer, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteOrderItemsSerializer, DeleteProductFilesSerializer, DeleteSpecialIntervalsSerializer, GetNewOrderCodeSerializer, GetProductPriceSerializer, MakeFilePrimarySerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
 
 
 class OrderViewSet(ModelViewSet):
@@ -83,6 +83,8 @@ class OrderItemViewSet(ModelViewSet):
     permission_classes = [IsAdminUser]
 
     def get_serializer_class(self):
+        if self.action == 'deleteIds':
+            return DeleteProductFilesSerializer
         if self.request.method == 'POST':
             return CreateOrderItemSerializer
         if self.request.method == 'PUT':
@@ -94,6 +96,14 @@ class OrderItemViewSet(ModelViewSet):
 
     def get_queryset(self):
         return OrderItem.objects.filter(order=self.kwargs['order_pk']).prefetch_related('product__files', 'product__product_special_intervals', 'product__required_product')
+
+    @action(methods=['post'], detail=False)
+    def deleteIds(self, request, order_pk):
+        serializer = DeleteOrderItemsSerializer(data=request.data, context=self.get_serializer_context())
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response({}, status=status.HTTP_204_NO_CONTENT)
 
 
 class AllOrderItemsViewSet(ModelViewSet):

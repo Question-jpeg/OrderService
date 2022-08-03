@@ -304,6 +304,17 @@ class OrderItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer()
 
 
+class DeleteOrderItemsSerializer(serializers.Serializer):
+    order_item_ids = serializers.ListField(
+        child=serializers.IntegerField(), allow_empty=False)
+    
+    def save(self, **kwargs):
+        order_item_ids = self.validated_data['order_item_ids']
+        order_id = self.context['order_id']
+        order = get_object_or_404(Order.objects.all(), pk=order_id)
+
+        OrderItem.objects.filter(order=order, pk__in=order_item_ids).delete()
+
 class OrderItemTimeInnerSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
