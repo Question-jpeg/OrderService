@@ -84,7 +84,7 @@ class OrderItemViewSet(ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'deleteIds':
-            return DeleteProductFilesSerializer
+            return DeleteOrderItemsSerializer
         if self.request.method == 'POST':
             return CreateOrderItemSerializer
         if self.request.method == 'PUT':
