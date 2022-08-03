@@ -542,7 +542,7 @@ class MarkOrderAsFailedSerializer(serializers.Serializer):
 class CreateOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['product', 'start_datetime', 'end_datetime', 'quantity']
+        fields = ['id', 'product', 'start_datetime', 'end_datetime', 'quantity']
 
     def save(self, **kwargs):
         order_id = self.context['order_id']
