@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from multiprocessing import context
 import random
 from django.utils import timezone
 from django.db import transaction
@@ -276,9 +277,11 @@ def calculateProductTotalPrice(start, end, fixed_end, product, quantity, error_m
 
 class GetProductPriceSerializer(serializers.ModelSerializer):
     exclude_order_item_id = serializers.IntegerField(allow_null=True)
+
     class Meta:
         model = OrderItem
-        fields = ['start_datetime', 'end_datetime', 'quantity', 'exclude_order_item_id']
+        fields = ['start_datetime', 'end_datetime',
+                  'quantity', 'exclude_order_item_id']
 
     def save(self, **kwargs):
         product_id = self.context['product_id']
@@ -307,13 +310,14 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class DeleteOrderItemsSerializer(serializers.Serializer):
     order_item_ids = serializers.ListField(
         child=serializers.IntegerField(), allow_empty=False)
-    
+
     def save(self, **kwargs):
         order_item_ids = self.validated_data['order_item_ids']
         order_id = self.context['order_id']
         order = get_object_or_404(Order.objects.all(), pk=order_id)
 
         OrderItem.objects.filter(order=order, pk__in=order_item_ids).delete()
+
 
 class OrderItemTimeInnerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -323,12 +327,14 @@ class OrderItemTimeInnerSerializer(serializers.ModelSerializer):
 
 class OrderItemTimeSerializer(serializers.Serializer):
     current_datetime = serializers.DateTimeField()
+    exclude_order_item_id = serializers.IntegerField(allow_null=True)
 
     def save(self, **kwargs):
         current_datetime = self.validated_data['current_datetime']
+        exclude_order_item_id = self.validated_data['exclude_order_item_id']
         product_id = self.context['product_id']
         queryset = OrderItem.objects.filter(
-            end_datetime__gt=current_datetime, product_id=product_id)
+            end_datetime__gt=current_datetime, product_id=product_id).exclude(pk=exclude_order_item_id)
         return OrderItemTimeInnerSerializer(queryset, many=True).data
 
 
@@ -399,9 +405,19 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                     {'product_id': product.pk, 'message': 'Товар недоступен'})
 
             if (required_product):
-                if not CartItem.objects.filter(cart_id=cart_id, product=required_product).exists():
+                required_product_cart_item = CartItem.objects.filter(
+                    cart_id=cart_id, product=required_product)
+                if not required_product_cart_item.exists():
                     raise serializers.ValidationError(
                         {'product_id': required_product.pk, 'message': 'Бронь этого товара невозможна без брони основного'})
+
+                required_product_cart_item = required_product_cart_item.get()
+
+                if (start < required_product_cart_item.start_datetime) or (end > required_product_cart_item.end_datetime):
+                    raise serializers.ValidationError(
+                        {'product_id': product.pk,
+                            'message': 'Вы не можете забронировать товар на больший интервал, чем основной товар'}
+                    )
 
             total_price = calculateProductTotalPrice(
                 start, end, fixed_end, product, quantity, 'Условия брони изменились, пожалуйста, перебронируйте товар')
@@ -542,7 +558,8 @@ class MarkOrderAsFailedSerializer(serializers.Serializer):
 class CreateOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'start_datetime', 'end_datetime', 'quantity']
+        fields = ['id', 'product', 'start_datetime',
+                  'end_datetime', 'quantity']
 
     def save(self, **kwargs):
         order_id = self.context['order_id']
@@ -709,3 +726,83 @@ class UserPushNotificationTokenSerializer(serializers.ModelSerializer):
             obj.save()
         self.instance = obj
         return self.instance
+
+
+class GetAllowedIntervalInCart(serializers.Serializer):
+    product_id = serializers.IntegerField()
+
+    def save(self, **kwargs):
+        cart_id = self.context['cart_id']
+        product_id = self.validated_data['product_id']
+        cart = get_object_or_404(Cart.objects.all(), pk=cart_id)
+        product = get_object_or_404(Product.objects.all(), pk=product_id)
+        required_cart_item = get_object_or_404(
+            CartItem.objects.all(), cart=cart, product_id=product.required_product)
+        min_hour = product.min_hour
+
+        return {'start_datetime': required_cart_item.start_datetime.replace(hour=min_hour.hour, minute=min_hour.minute), 'end_datetime': required_cart_item.end_datetime}
+
+
+class GetAllowedIntervalInOrder(serializers.Serializer):
+    product_id = serializers.IntegerField()
+
+    def save(self, **kwargs):
+        order_id = self.context['order_id']
+        product_id = self.validated_data['product_id']
+        order = get_object_or_404(Order.objects.all(), pk=order_id)
+        product = get_object_or_404(Product.objects.all(), pk=product_id)
+        required_order_item = get_object_or_404(
+            OrderItem.objects.all(), order=order, product_id=product.required_product)
+        min_hour = product.min_hour
+
+        return {'start_datetime': required_order_item.start_datetime.replace(hour=min_hour.hour, minute=min_hour.minute), 'end_datetime': required_order_item.end_datetime}
+
+
+class CheckAffectedInCart(serializers.Serializer):
+    def save(self, **kwargs):
+        cart_id = self.context['cart_id']
+        cart = get_object_or_404(Cart.objects.all(), pk=cart_id)
+        cart_items = CartItem.objects.filter(cart=cart)
+        invalid_products_ids = []
+        empty_products_ids = []
+        for item in cart_items.exclude(product__required_product=None):
+            try:
+                required_cart_item = cart_items.get(
+                    product=item.product.required_product)
+                if item.start_datetime < required_cart_item.start_datetime or item.end_datetime > required_cart_item.end_datetime:
+                    invalid_products_ids.append(item.product.pk)
+            except CartItem.DoesNotExist:
+                empty_products_ids.append(item.product.pk)
+
+        if len(empty_products_ids) > 0:
+            raise serializers.ValidationError(
+                {'products_ids': empty_products_ids, 'required_product_id': item.product.required_product.pk, 'message': 'Отсутствует необходимый товар'})
+
+        if len(invalid_products_ids) > 0:
+            raise serializers.ValidationError(
+                {'products_ids': invalid_products_ids, 'message': 'Забронирован на больший интервал чем основной товар'})
+
+
+class CheckAffectedInOrder(serializers.Serializer):
+    def save(self, **kwargs):
+        order_id = self.context['order_id']
+        order = get_object_or_404(Order.objects.all(), pk=order_id)
+        order_items = OrderItem.objects.filter(order=order)
+        invalid_products_ids = []
+        empty_products_ids = []
+        for item in order_items.exclude(product__required_product=None):
+            try:
+                required_order_item = order_items.get(
+                    product=item.product.required_product)
+                if item.start_datetime < required_order_item.start_datetime or item.end_datetime > required_order_item.end_datetime:
+                    invalid_products_ids.append(item.product.pk)
+            except CartItem.DoesNotExist:
+                empty_products_ids.append(item.product.pk)
+
+        if len(empty_products_ids) > 0:
+            raise serializers.ValidationError(
+                {'products_ids': empty_products_ids, 'required_product_id': item.product.required_product.pk, 'message': 'Отсутствует необходимый товар'})
+
+        if len(invalid_products_ids) > 0:
+            raise serializers.ValidationError(
+                {'products_ids': invalid_products_ids, 'message': 'Забронирован на больший интервал чем основной товар'})
