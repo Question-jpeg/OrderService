@@ -707,6 +707,23 @@ class CartSerializer(serializers.ModelSerializer):
 
     items = CartItemSerializer(many=True, read_only=True)
 
+    def save(self, **kwargs):
+        persons = self.validated_data['persons']
+        query_total_max = Product.objects.filter(max_persons__gt=0).aggregate(
+            Sum('max_persons'))['max_persons__sum']
+
+        if persons > query_total_max:
+            raise serializers.ValidationError(
+                {'message': f'Максимально возможное заселение: {query_total_max} чел.'})
+
+        if self.instance:
+            self.instance.persons = persons
+            self.instance.save()
+        else:
+            self.instance = Cart.objects.create(**self.validated_data)
+
+        return self.instance
+
 
 class UserPushNotificationTokenSerializer(serializers.ModelSerializer):
     class Meta:
