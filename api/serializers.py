@@ -755,9 +755,18 @@ class GetAllowedIntervalInCart(serializers.Serializer):
         product = get_object_or_404(Product.objects.all(), pk=product_id)
         required_cart_item = get_object_or_404(
             CartItem.objects.all(), cart=cart, product_id=product.required_product)
-        min_hour = product.min_hour
+        start_datetime = required_cart_item.start_datetime
+        end_datetime = required_cart_item.end_datetime
 
-        return {'start_datetime': required_cart_item.start_datetime.replace(hour=min_hour.hour, minute=min_hour.minute), 'end_datetime': required_cart_item.end_datetime}
+        if not product.use_hotel_booking_time:
+            min_time = product.min_hour
+            max_time = product.max_hour
+            start_datetime = start_datetime if start_datetime.hour >= min_time.hour else start_datetime.replace(
+                hour=min_time.hour, minute=min_time.minute)
+            end_datetime = end_datetime if end_datetime.hour <= max_time.hour else end_datetime.replace(
+                hour=max_time.hour, minute=max_time.minute)
+
+        return {'start_datetime': start_datetime, 'end_datetime': end_datetime}
 
 
 class GetAllowedIntervalInOrder(serializers.Serializer):
@@ -770,9 +779,18 @@ class GetAllowedIntervalInOrder(serializers.Serializer):
         product = get_object_or_404(Product.objects.all(), pk=product_id)
         required_order_item = get_object_or_404(
             OrderItem.objects.all(), order=order, product_id=product.required_product)
-        min_hour = product.min_hour
+        start_datetime = required_order_item.start_datetime
+        end_datetime = required_order_item.end_datetime
 
-        return {'start_datetime': required_order_item.start_datetime.replace(hour=min_hour.hour, minute=min_hour.minute), 'end_datetime': required_order_item.end_datetime}
+        if not product.use_hotel_booking_time:
+            min_time = product.min_hour
+            max_time = product.max_hour
+            start_datetime = start_datetime if start_datetime.hour >= min_time.hour else start_datetime.replace(
+                hour=min_time.hour, minute=min_time.minute)
+            end_datetime = end_datetime if end_datetime.hour <= max_time.hour else end_datetime.replace(
+                hour=max_time.hour, minute=max_time.minute)
+
+        return {'start_datetime': start_datetime, 'end_datetime': end_datetime}
 
 
 class CheckAffectedInCart(serializers.Serializer):
