@@ -810,12 +810,12 @@ class CheckAffectedInCart(serializers.Serializer):
                 empty_products_ids.append(item.product.pk)
 
         if len(empty_products_ids) > 0:
-            raise serializers.ValidationError(
-                {'products_ids': empty_products_ids, 'required_product_id': item.product.required_product.pk, 'message': 'Отсутствует необходимый товар'})
+            return {'products_ids': empty_products_ids, 'required_product_id': item.product.required_product.pk, 'message': 'Отсутствует необходимый товар'}
 
         if len(invalid_products_ids) > 0:
-            raise serializers.ValidationError(
-                {'products_ids': invalid_products_ids, 'message': 'Забронирован на больший интервал чем основной товар'})
+            return {'products_ids': invalid_products_ids, 'message': 'Забронирован на больший интервал чем основной товар'}
+
+        return {'not_found': True}
 
 
 class CheckAffectedInOrder(serializers.Serializer):
@@ -835,9 +835,9 @@ class CheckAffectedInOrder(serializers.Serializer):
                 empty_products_ids.append(item.product.pk)
 
         if len(empty_products_ids) > 0:
-            raise serializers.ValidationError(
-                {'products_ids': empty_products_ids, 'required_product_id': item.product.required_product.pk, 'message': 'Отсутствует необходимый товар'})
+            return {'products_ids': empty_products_ids, 'required_product_id': item.product.required_product.pk, 'message': 'Отсутствует необходимый товар'}
 
         if len(invalid_products_ids) > 0:
-            raise serializers.ValidationError(
-                {'products_ids': invalid_products_ids, 'message': 'Забронирован на больший интервал чем основной товар'})
+            return {'products_ids': invalid_products_ids, 'message': 'Забронирован на больший интервал чем основной товар'}
+
+        return {'not_found': True}

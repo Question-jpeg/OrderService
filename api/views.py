@@ -103,7 +103,8 @@ class OrderItemViewSet(ModelViewSet):
 
     @action(methods=['post'], detail=False)
     def get_allowed_interval(self, request, order_pk):
-        serializer = GetAllowedIntervalInOrder(data=request.data, context=self.get_serializer_context())
+        serializer = GetAllowedIntervalInOrder(
+            data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         data = serializer.save()
 
@@ -111,14 +112,16 @@ class OrderItemViewSet(ModelViewSet):
 
     @action(methods=['get'], detail=False)
     def check_affected(self, request, order_pk):
-        serializer = CheckAffectedInOrder(context=self.get_serializer_context())
-        serializer.save()
+        serializer = CheckAffectedInOrder(
+            context=self.get_serializer_context())
+        data = serializer.save()
 
-        return Response({}, status=status.HTTP_204_NO_CONTENT)
+        return Response({}, status=status.HTTP_404_NOT_FOUND) if data.get('not_found') else Response(data, status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=False)
     def deleteIds(self, request, order_pk):
-        serializer = DeleteOrderItemsSerializer(data=request.data, context=self.get_serializer_context())
+        serializer = DeleteOrderItemsSerializer(
+            data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
@@ -164,7 +167,8 @@ class ProductViewSet(ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def getPrice(self, request, pk):
-        serializer = GetProductPriceSerializer(data=request.data, context={'product_id': pk})
+        serializer = GetProductPriceSerializer(
+            data=request.data, context={'product_id': pk})
         serializer.is_valid(raise_exception=True)
         data = serializer.save()
 
@@ -268,13 +272,14 @@ class CartItemViewSet(ModelViewSet):
     @action(methods=['get'], detail=False)
     def check_affected(self, request, cart_pk):
         serializer = CheckAffectedInCart(context=self.get_serializer_context())
-        serializer.save()
+        data = serializer.save()
 
-        return Response({}, status=status.HTTP_204_NO_CONTENT)
+        return Response({}, status=status.HTTP_404_NOT_FOUND) if data.get('not_found') else Response(data, status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=False)
     def get_allowed_interval(self, request, cart_pk):
-        serializer = GetAllowedIntervalInCart(data=request.data, context=self.get_serializer_context())
+        serializer = GetAllowedIntervalInCart(
+            data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         data = serializer.save()
 
