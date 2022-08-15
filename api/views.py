@@ -266,7 +266,7 @@ class CartItemViewSet(ModelViewSet):
         return {'request': self.request, 'cart_id': self.kwargs['cart_pk']}
 
     @action(methods=['get'], detail=False)
-    def check_affected(self, request, order_pk):
+    def check_affected(self, request, cart_pk):
         serializer = CheckAffectedInCart(context=self.get_serializer_context())
         serializer.save()
 
