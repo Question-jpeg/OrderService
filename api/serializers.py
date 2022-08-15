@@ -660,12 +660,24 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
                         'message': 'Вы не можете забронировать товар на больший интервал, чем основной товар'}
                 )
 
-        if CartItem.objects.filter(cart_id=cart_id, product=product).filter(condition_constructor(start, end)).exists():
+        context_instance = self.context.get('instance')
+
+        if CartItem.objects.filter(cart_id=cart_id, product=product).exclude(pk=(context_instance.pk if context_instance else None)).filter(condition_constructor(start, end)).exists():
             raise serializers.ValidationError(
                 {'product_id': product.pk, 'message': 'Время брони этого объекта пересекается с таким же объектом, который у вас уже в корзине'})
 
         price = calculateProductTotalPrice(
             start, end, fixed_end, product, quantity, 'Некорректный ввод даты')
+
+        if context_instance:
+            self.instance = context_instance
+            self.instance.start_datetime = start
+            self.instance.end_datetime = end
+            self.instance.price = price
+            self.instance.quantity = quantity
+            self.instance.save()
+            return self.instance
+
         self.instance = CartItem.objects.create(
             cart_id=cart_id, product=product, start_datetime=start, end_datetime=end, price=price, quantity=quantity)
         return self.instance
@@ -689,10 +701,8 @@ class UpdateCartItemSerializer(serializers.ModelSerializer):
             cart = cart_item.cart
             product = cart_item.product
 
-            cart_item.delete()
-
             serializer = CreateCartItemSerializer(
-                data={'product': product.pk, 'start_datetime': start, 'end_datetime': end, 'quantity': quantity}, context={'cart_id': cart.pk})
+                data={'product': product.pk, 'start_datetime': start, 'end_datetime': end, 'quantity': quantity}, context={'cart_id': cart.pk, 'instance': cart_item})
             serializer.is_valid(raise_exception=True)
             self.instance = serializer.save()
 
