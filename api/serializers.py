@@ -798,22 +798,22 @@ class CheckAffectedInCart(serializers.Serializer):
         cart_id = self.context['cart_id']
         cart = get_object_or_404(Cart.objects.all(), pk=cart_id)
         cart_items = CartItem.objects.filter(cart=cart)
-        invalid_products_ids = []
-        empty_products_ids = []
+        invalid_cart_item_ids = []
+        empty_cart_item_ids = []
         for item in cart_items.exclude(product__required_product=None):
             try:
                 required_cart_item = cart_items.get(
                     product=item.product.required_product)
                 if item.start_datetime < required_cart_item.start_datetime or item.end_datetime > required_cart_item.end_datetime:
-                    invalid_products_ids.append(item.product.pk)
+                    invalid_cart_item_ids.append(item.pk)
             except CartItem.DoesNotExist:
-                empty_products_ids.append(item.product.pk)
+                empty_cart_item_ids.append(item.pk)
 
-        if len(empty_products_ids) > 0:
-            return {'products_ids': empty_products_ids, 'required_product_id': item.product.required_product.pk, 'message': 'Отсутствует необходимый товар'}
+        if len(empty_cart_item_ids) > 0:
+            return {'cart_item_ids': empty_cart_item_ids, 'required_product_id': item.product.required_product.pk, 'message': 'Отсутствует необходимый товар'}
 
-        if len(invalid_products_ids) > 0:
-            return {'products_ids': invalid_products_ids, 'message': 'Забронирован на больший интервал чем основной товар'}
+        if len(invalid_cart_item_ids) > 0:
+            return {'cart_item_ids': invalid_cart_item_ids, 'message': 'Забронирован на больший интервал чем основной товар'}
 
         return {'not_found': True}
 
@@ -823,21 +823,21 @@ class CheckAffectedInOrder(serializers.Serializer):
         order_id = self.context['order_id']
         order = get_object_or_404(Order.objects.all(), pk=order_id)
         order_items = OrderItem.objects.filter(order=order)
-        invalid_products_ids = []
-        empty_products_ids = []
+        invalid_order_item_ids = []
+        empty_order_item_ids = []
         for item in order_items.exclude(product__required_product=None):
             try:
                 required_order_item = order_items.get(
                     product=item.product.required_product)
                 if item.start_datetime < required_order_item.start_datetime or item.end_datetime > required_order_item.end_datetime:
-                    invalid_products_ids.append(item.product.pk)
+                    invalid_order_item_ids.append(item.pk)
             except CartItem.DoesNotExist:
-                empty_products_ids.append(item.product.pk)
+                empty_order_item_ids.append(item.pk)
 
-        if len(empty_products_ids) > 0:
-            return {'products_ids': empty_products_ids, 'required_product_id': item.product.required_product.pk, 'message': 'Отсутствует необходимый товар'}
+        if len(empty_order_item_ids) > 0:
+            return {'order_item_ids': empty_order_item_ids, 'required_product_id': item.product.required_product.pk, 'message': 'Отсутствует необходимый товар'}
 
-        if len(invalid_products_ids) > 0:
-            return {'products_ids': invalid_products_ids, 'message': 'Забронирован на больший интервал чем основной товар'}
+        if len(invalid_order_item_ids) > 0:
+            return {'order_item_ids': invalid_order_item_ids, 'message': 'Забронирован на больший интервал чем основной товар'}
 
         return {'not_found': True}
