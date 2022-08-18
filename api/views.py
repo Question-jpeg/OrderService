@@ -1,3 +1,4 @@
+from multiprocessing import context
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework.viewsets import ModelViewSet
@@ -9,7 +10,7 @@ from rest_framework.decorators import action
 from api.models import Cart, CartItem, ProductFile, ProductSpecialInterval, Order, OrderItem, Product, UserPushNotificationToken
 from api.pagination import DefaultPagination
 from api.permissions import IsAdminUserOrPostOnly, IsOwner
-from api.serializers import CartItemSerializer, CartSerializer, CheckAffectedInCart, CheckAffectedInOrder, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteOrderItemsSerializer, DeleteProductFilesSerializer, DeleteSpecialIntervalsSerializer, GetAllowedIntervalInCart, GetAllowedIntervalInOrder, GetNewOrderCodeSerializer, GetProductPriceSerializer, MakeFilePrimarySerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
+from api.serializers import CartItemSerializer, CartSerializer, CheckAffectedInCart, CheckAffectedInOrder, CreateCartItemSerializer, CreateOrderItemSerializer, CreateOrderSerializer, CreateProductFilesSerializer, DeleteOrderItemsSerializer, DeleteProductFilesSerializer, DeleteSpecialIntervalsSerializer, GetAllowedIntervalInCart, GetAllowedIntervalInOrder, GetNewOrderCodeSerializer, GetProductPriceSerializer, IsCartValid, MakeFilePrimarySerializer, MarkOrderAsFailedSerializer, ProductFileSerializer, ProductSpecialIntervalSerializer, GetOrderSerializer, UpdateCartItemSerializer, UpdateOrderItemSerializer, UserPushNotificationTokenSerializer, VerifyOrderWithCodeSerializer, OrderItemSerializer, OrderItemTimeSerializer, OrderSerializer, ProductSerializer, ProductSimpleSerializer
 
 
 class OrderViewSet(ModelViewSet):
@@ -256,8 +257,8 @@ class CartItemViewSet(ModelViewSet):
         return CartItem.objects.filter(cart=self.kwargs['cart_pk']).prefetch_related('product__files', 'product__product_special_intervals', 'product__required_product')
 
     def get_serializer_class(self):
-        if self.action == 'check_affected':
-            return CheckAffectedInCart
+        if self.action == 'is_valid':
+            return IsCartValid
         if self.action == 'get_allowed_interval':
             return GetAllowedIntervalInCart
         if self.request.method == 'POST':
@@ -270,11 +271,11 @@ class CartItemViewSet(ModelViewSet):
         return {'request': self.request, 'cart_id': self.kwargs['cart_pk']}
 
     @action(methods=['get'], detail=False)
-    def check_affected(self, request, cart_pk):
-        serializer = CheckAffectedInCart(context=self.get_serializer_context())
+    def is_valid(self, request, cart_pk):
+        serializer = IsCartValid(context=self.get_serializer_context())
         data = serializer.save()
 
-        return Response({}, status=status.HTTP_404_NOT_FOUND) if data.get('not_found') else Response(data, status=status.HTTP_200_OK)
+        return Response({}, status=status.HTTP_404_NOT_FOUND) if data.get('is_valid') else Response(data, status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=False)
     def get_allowed_interval(self, request, cart_pk):

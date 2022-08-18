@@ -623,28 +623,26 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
         model = CartItem
         exclude = ['cart', 'price']
 
-    def save(self, **kwargs):
+    def validate(self, data):
+        data = super().validate(data)
+
         cart_id = self.context['cart_id']
+        context_instance = self.context.get('instance')
 
         try:
             Cart.objects.get(pk=cart_id)
         except Cart.DoesNotExist:
             raise serializers.ValidationError({'message': 'Такой корзины нет'})
 
-        product = self.validated_data['product']
-        start = self.validated_data['start_datetime']
-        end = self.validated_data['end_datetime']
-        quantity = self.validated_data['quantity']
-
-        # product properties
+        product = data['product']
+        start = data['start_datetime']
+        end = data['end_datetime']
+        quantity = data['quantity']
+        start, end, fixed_end = getStartEnd(
+            start, end, product.use_hotel_booking_time)
         required_product = product.required_product
-        is_available = product.is_available
-        use_hotel_booking_time = product.use_hotel_booking_time
-        # /product properties
 
-        start, end, fixed_end = getStartEnd(start, end, use_hotel_booking_time)
-
-        if not is_available:
+        if not product.is_available:
             raise serializers.ValidationError({'message': 'Товар недоступен'})
 
         if required_product:
@@ -660,14 +658,25 @@ class CreateCartItemSerializer(serializers.ModelSerializer):
                         'message': 'Вы не можете забронировать товар на больший интервал, чем основной товар'}
                 )
 
-        context_instance = self.context.get('instance')
-
         if CartItem.objects.filter(cart_id=cart_id, product=product).exclude(pk=(context_instance.pk if context_instance else None)).filter(condition_constructor(start, end)).exists():
             raise serializers.ValidationError(
                 {'product_id': product.pk, 'message': 'Время брони этого объекта пересекается с таким же объектом, который у вас уже в корзине'})
 
-        price = calculateProductTotalPrice(
+        data['start'] = start
+        data['end'] = end
+        data['price'] = calculateProductTotalPrice(
             start, end, fixed_end, product, quantity, 'Некорректный ввод даты')
+
+        return data
+
+    def save(self, **kwargs):
+        cart_id = self.context['cart_id']
+        context_instance = self.context.get('instance')
+        product = self.validated_data['product']
+        start = self.validated_data['start']
+        end = self.validated_data['end']
+        quantity = self.validated_data['quantity']
+        price = self.validated_data['price']
 
         if context_instance:
             self.instance = context_instance
@@ -826,6 +835,25 @@ class CheckAffectedInCart(serializers.Serializer):
             return {'cart_item_ids': invalid_cart_item_ids, 'message': 'Забронирован на больший интервал чем основной товар'}
 
         return {'not_found': True}
+
+
+class IsCartValid(serializers.Serializer):
+    def save(self, **kwargs):
+        cart_id = self.context['cart_id']
+        cart = get_object_or_404(Cart.objects.all(), pk=cart_id)
+        cart_items = CartItem.objects.filter(cart=cart)
+        invalid_cart_item_ids = []
+        for item in cart_items:
+            serializer = CreateCartItemSerializer(
+                data={'product': item.product.pk, 'start_datetime': item.start_datetime, 'end_datetime': item.end_datetime, 'quantity': item.quantity}, context={'cart_id': cart.pk, 'instance': item})
+
+            if not serializer.is_valid():
+                invalid_cart_item_ids.append(item.pk)
+
+        if len(invalid_cart_item_ids) > 0:
+            return {'is_valid': False, 'cart_item_ids': invalid_cart_item_ids}
+
+        return {'is_valid': True}
 
 
 class CheckAffectedInOrder(serializers.Serializer):
