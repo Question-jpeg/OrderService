@@ -542,6 +542,7 @@ class GetNewOrderCodeSerializer(serializers.ModelSerializer):
 
 class GetOrderSerializer(serializers.Serializer):
     code = serializers.CharField()
+    phone = serializers.CharField()
 
     def save(self, **kwargs):
         return get_object_or_404(Order.objects.all(), **self.validated_data, pk=self.context['order_id'])
