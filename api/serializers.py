@@ -440,7 +440,7 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                 {'message': 'Цены на товары изменились, пожалуйста, перепроверьте корзину'})
 
         if cart_persons > total_max_persons:
-            query_total_max = Product.objects.filter(max_persons__gt=0).aggregate(
+            query_total_max = Product.objects.filter(max_persons__gt=0, is_available=True).aggregate(
                 Sum('max_persons'))['max_persons__sum']
             if cart_persons > query_total_max:
                 raise serializers.ValidationError(
@@ -728,7 +728,7 @@ class CartSerializer(serializers.ModelSerializer):
 
     def save(self, **kwargs):
         persons = self.validated_data['persons']
-        query_total_max = Product.objects.filter(max_persons__gt=0).aggregate(
+        query_total_max = Product.objects.filter(max_persons__gt=0, is_available=True).aggregate(
             Sum('max_persons'))['max_persons__sum']
 
         if persons > query_total_max:
@@ -842,7 +842,9 @@ class IsCartValid(serializers.Serializer):
         cart_id = self.context['cart_id']
         cart = get_object_or_404(Cart.objects.all(), pk=cart_id)
         cart_items = CartItem.objects.filter(cart=cart)
+        cart_persons = cart.persons
         invalid_cart_item_ids = []
+        total_max_persons = 0
         for item in cart_items:
             serializer = CreateCartItemSerializer(
                 data={'product': item.product.pk, 'start_datetime': item.start_datetime, 'end_datetime': item.end_datetime, 'quantity': item.quantity}, context={'cart_id': cart.pk, 'instance': item})
@@ -850,8 +852,14 @@ class IsCartValid(serializers.Serializer):
             if not serializer.is_valid():
                 invalid_cart_item_ids.append(item.pk)
 
+            max_persons = item.product.max_persons
+            if max_persons:
+                total_max_persons += max_persons
+
+        if cart_persons > total_max_persons:
+            return {'is_valid': False, 'message': 'В вашей корзине не хватает спальных мест'}
         if len(invalid_cart_item_ids) > 0:
-            return {'is_valid': False, 'cart_item_ids': invalid_cart_item_ids}
+            return {'is_valid': False, 'message': 'Некорректное заполнение дат', 'cart_item_ids': invalid_cart_item_ids}
 
         return {'is_valid': True}
 

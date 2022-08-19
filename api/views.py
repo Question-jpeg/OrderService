@@ -275,7 +275,7 @@ class CartItemViewSet(ModelViewSet):
         serializer = IsCartValid(context=self.get_serializer_context())
         data = serializer.save()
 
-        return Response({}, status=status.HTTP_404_NOT_FOUND) if data.get('is_valid') else Response(data, status=status.HTTP_200_OK)
+        return Response(data, status=status.HTTP_200_OK)
 
     @action(methods=['post'], detail=False)
     def get_allowed_interval(self, request, cart_pk):
