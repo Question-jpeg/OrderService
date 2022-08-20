@@ -57,9 +57,9 @@ class OrderViewSet(ModelViewSet):
         serializer = VerifyOrderWithCodeSerializer(
             data=request.data, context={'order_id': pk})
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        data = serializer.save()
 
-        return Response('Заказ принят', status=status.HTTP_200_OK)
+        return Response({'message': data['message']}, status=data['status'])
 
     @action(detail=True, methods=['post'])
     def get_new_code(self, request, pk):

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from multiprocessing import context
 import random
+from rest_framework import status
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Q, Sum
@@ -494,19 +495,18 @@ class VerifyOrderWithCodeSerializer(serializers.ModelSerializer):
             if order.code == code:
                 order.status = 'P'
                 order.save()
+                return {'status': status.HTTP_200_OK, 'message': 'Заказ принят'}
             else:
                 order.attempts_left = order.attempts_left - 1
                 if order.attempts_left == 0:
                     order.status = 'F'
                     order.save()
-                    raise serializers.ValidationError(
-                        {'message': 'Вы превысили количество попыток ввода верификационного кода. Заказ помечен как недействительный. Позвоните нам чтобы верифицировать заказ.'})
+                    return {'status': status.HTTP_403_FORBIDDEN, 'message': 'Вы превысили количество попыток ввода верификационного кода. Заказ помечен как недействительный. Позвоните нам чтобы верифицировать заказ.'}
                 order.save()
-                raise serializers.ValidationError(
-                    {'message': 'Неверный код верификации'})
+                return {'status': status.HTTP_400_BAD_REQUEST, 'message': 'Неверный код верификации'}
         except Order.DoesNotExist:
-            raise serializers.ValidationError({'message':
-                                               'Заказ со статусом "Ожидает верификационный код" не найден'})
+            return {'status': status.HTTP_403_FORBIDDEN, 'message':
+                    'Заказ со статусом "Ожидает верификационный код" не найден'}
 
 
 class GetNewOrderCodeSerializer(serializers.ModelSerializer):
