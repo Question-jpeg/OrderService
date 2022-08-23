@@ -77,7 +77,7 @@ class OrderViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
 
-        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+        return Response(OrderSerializer(order, context={'request': request}).data, status=status.HTTP_200_OK)
 
 
 class OrderItemViewSet(ModelViewSet):
